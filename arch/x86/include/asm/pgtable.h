@@ -83,6 +83,11 @@ extern struct mm_struct *pgd_page_get_mm(struct page *page);
 
 #endif	/* CONFIG_PARAVIRT */
 
+static inline pteval_t pte_flags(pte_t pte)
+{
+	return pte_val(pte) & PTE_FLAGS_MASK;
+}
+
 /*
  * The following only work if pte_present() is true.
  * Undefined behaviour if not..
