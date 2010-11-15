@@ -78,7 +78,7 @@ static __always_inline void __ticket_unlock_kick(struct arch_spinlock *lock, __t
  */
 static __always_inline void arch_spin_lock(struct arch_spinlock *lock)
 {
-	register struct __raw_tickets inc = { .tail = 1 };
+	register struct __raw_tickets inc = { .tail = TICKET_LOCK_INC };
 
 	inc = xadd(&lock->tickets, inc);
 
@@ -104,7 +104,7 @@ static __always_inline int arch_spin_trylock(arch_spinlock_t *lock)
 	if (old.tickets.head != old.tickets.tail)
 		return 0;
 
-	new.head_tail = old.head_tail + (1 << TICKET_SHIFT);
+	new.head_tail = old.head_tail + (TICKET_LOCK_INC << TICKET_SHIFT);
 
 	/* cmpxchg is a full barrier, so nothing can move before it */
 	return cmpxchg(&lock->head_tail, old.head_tail, new.head_tail) == old.head_tail;
@@ -113,24 +113,24 @@ static __always_inline int arch_spin_trylock(arch_spinlock_t *lock)
 #if (NR_CPUS < 256)
 static __always_inline void __ticket_unlock_release(arch_spinlock_t *lock)
 {
-	asm volatile(UNLOCK_LOCK_PREFIX "incb %0"
+	asm volatile(UNLOCK_LOCK_PREFIX "addb %1, %0"
 		     : "+m" (lock->head_tail)
-		     :
+		     : "i" (TICKET_LOCK_INC)
 		     : "memory", "cc");
 }
 #else
 static __always_inline void __ticket_unlock_release(arch_spinlock_t *lock)
 {
-	asm volatile(UNLOCK_LOCK_PREFIX "incw %0"
+	asm volatile(UNLOCK_LOCK_PREFIX "addw %1, %0"
 		     : "+m" (lock->head_tail)
-		     :
+		     : "i" (TICKET_LOCK_INC)
 		     : "memory", "cc");
 }
 #endif
 
 static __always_inline void arch_spin_unlock(arch_spinlock_t *lock)
 {
-	__ticket_t next = lock->tickets.head + 1;
+	__ticket_t next = lock->tickets.head + TICKET_LOCK_INC;
 
 	__ticket_unlock_release(lock);
 	__ticket_unlock_kick(lock, next);
@@ -147,7 +147,7 @@ static inline int arch_spin_is_contended(arch_spinlock_t *lock)
 {
 	struct __raw_tickets tmp = ACCESS_ONCE(lock->tickets);
 
-	return ((tmp.tail - tmp.head) & TICKET_MASK) > 1;
+	return ((tmp.tail - tmp.head) & TICKET_MASK) > TICKET_LOCK_INC;
 }
 #define arch_spin_is_contended	arch_spin_is_contended
 
