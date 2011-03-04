@@ -1183,7 +1183,6 @@ static void __xen_evtchn_do_upcall(struct pt_regs *regs)
 				pending_words &= ~(1UL << word_idx);
 
 			word_idx = (word_idx + 1) % BITS_PER_LONG;
-			bit_idx = 0;
 		}
 
 		BUG_ON(!irqs_disabled());
