@@ -1071,6 +1071,11 @@ irqreturn_t xen_debug_interrupt(int irq, void *dev_id)
 static DEFINE_PER_CPU(unsigned, xed_nesting_count);
 
 /*
+ * Mask out the i least significant bits of w
+ */
+#define MASK_LSBS(w, i) (w & ((~0UL) << i))
+
+/*
  * Search the CPUs pending events bitmasks.  For each one found, map
  * the event number to an irq, and feed it into do_IRQ() for
  * handling.
@@ -1081,6 +1086,9 @@ static DEFINE_PER_CPU(unsigned, xed_nesting_count);
  */
 static void __xen_evtchn_do_upcall(struct pt_regs *regs)
 {
+	static unsigned int last_word_idx = BITS_PER_LONG - 1;
+	static unsigned int last_bit_idx = BITS_PER_LONG - 1;
+	int word_idx, bit_idx;
 	int cpu = get_cpu();
 	struct shared_info *s = HYPERVISOR_shared_info;
 	struct vcpu_info *vcpu_info = __get_cpu_var(xen_vcpu);
@@ -1099,16 +1107,49 @@ static void __xen_evtchn_do_upcall(struct pt_regs *regs)
 		wmb();
 #endif
 		pending_words = xchg(&vcpu_info->evtchn_pending_sel, 0);
+
+		word_idx = last_word_idx;
+		bit_idx = last_bit_idx;
+
 		while (pending_words != 0) {
 			unsigned long pending_bits;
-			int word_idx = __ffs(pending_words);
-			pending_words &= ~(1UL << word_idx);
+			unsigned long words;
 
-			while ((pending_bits = active_evtchns(cpu, s, word_idx)) != 0) {
-				int bit_idx = __ffs(pending_bits);
-				int port = (word_idx * BITS_PER_LONG) + bit_idx;
-				int irq = evtchn_to_irq[port];
+			word_idx = (word_idx + 1) % BITS_PER_LONG;
+			words = MASK_LSBS(pending_words, word_idx);
+
+			/*
+			 * If we masked out all events, wrap around to the
+			 * beginning.
+			 */
+			if (words == 0) {
+				word_idx = BITS_PER_LONG - 1;
+				bit_idx = BITS_PER_LONG - 1;
+				continue;
+			}
+			word_idx = __ffs(words);
+
+			do {
+				unsigned long bits;
+				int port, irq;
 				struct irq_desc *desc;
+
+				pending_bits = active_evtchns(cpu, s, word_idx);
+
+				bit_idx = (bit_idx + 1) % BITS_PER_LONG;
+				bits = MASK_LSBS(pending_bits, bit_idx);
+
+				/* If we masked out all events, move on. */
+				if (bits == 0) {
+					bit_idx = BITS_PER_LONG - 1;
+					break;
+				}
+
+				bit_idx = __ffs(bits);
+
+				/* Process port. */
+				port = (word_idx * BITS_PER_LONG) + bit_idx;
+				irq = evtchn_to_irq[port];
 
 				mask_evtchn(port);
 				clear_evtchn(port);
@@ -1118,7 +1159,24 @@ static void __xen_evtchn_do_upcall(struct pt_regs *regs)
 					if (desc)
 						generic_handle_irq_desc(irq, desc);
 				}
-			}
+
+				/*
+				 * If this is the final port processed, we'll
+				 * pick up here+1 next time.
+				 */
+				last_word_idx = word_idx;
+				last_bit_idx = bit_idx;
+
+			} while (bit_idx != BITS_PER_LONG - 1);
+
+			pending_bits = active_evtchns(cpu, s, word_idx);
+
+			/*
+			 * We handled all ports, so we can clear the
+			 * selector bit.
+			 */
+			if (pending_bits == 0)
+				pending_words &= ~(1UL << word_idx);
 		}
 
 		BUG_ON(!irqs_disabled());
