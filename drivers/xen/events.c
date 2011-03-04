@@ -1069,6 +1069,8 @@ irqreturn_t xen_debug_interrupt(int irq, void *dev_id)
 }
 
 static DEFINE_PER_CPU(unsigned, xed_nesting_count);
+static DEFINE_PER_CPU(unsigned int, last_word_idx) = { BITS_PER_LONG - 1 };
+static DEFINE_PER_CPU(unsigned int, last_bit_idx) = { BITS_PER_LONG - 1 };
 
 /*
  * Mask out the i least significant bits of w
@@ -1086,8 +1088,6 @@ static DEFINE_PER_CPU(unsigned, xed_nesting_count);
  */
 static void __xen_evtchn_do_upcall(struct pt_regs *regs)
 {
-	static unsigned int last_word_idx = BITS_PER_LONG - 1;
-	static unsigned int last_bit_idx = BITS_PER_LONG - 1;
 	int word_idx, bit_idx;
 	int cpu = get_cpu();
 	struct shared_info *s = HYPERVISOR_shared_info;
@@ -1108,8 +1108,8 @@ static void __xen_evtchn_do_upcall(struct pt_regs *regs)
 #endif
 		pending_words = xchg(&vcpu_info->evtchn_pending_sel, 0);
 
-		word_idx = last_word_idx;
-		bit_idx = last_bit_idx;
+		word_idx = __get_cpu_var(last_word_idx);
+		bit_idx = __get_cpu_var(last_bit_idx);
 
 		while (pending_words != 0) {
 			unsigned long pending_bits;
@@ -1164,9 +1164,8 @@ static void __xen_evtchn_do_upcall(struct pt_regs *regs)
 				 * If this is the final port processed, we'll
 				 * pick up here+1 next time.
 				 */
-				last_word_idx = word_idx;
-				last_bit_idx = bit_idx;
-
+				__get_cpu_var(last_word_idx) = word_idx;
+				__get_cpu_var(last_bit_idx) = bit_idx;
 			} while (bit_idx != BITS_PER_LONG - 1);
 
 			pending_bits = active_evtchns(cpu, s, word_idx);
