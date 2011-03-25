@@ -1069,6 +1069,13 @@ irqreturn_t xen_debug_interrupt(int irq, void *dev_id)
 }
 
 static DEFINE_PER_CPU(unsigned, xed_nesting_count);
+static DEFINE_PER_CPU(unsigned int, current_word_idx);
+static DEFINE_PER_CPU(unsigned int, current_bit_idx);
+
+/*
+ * Mask out the i least significant bits of w
+ */
+#define MASK_LSBS(w, i) (w & ((~0UL) << i))
 
 /*
  * Search the CPUs pending events bitmasks.  For each one found, map
@@ -1081,6 +1088,9 @@ static DEFINE_PER_CPU(unsigned, xed_nesting_count);
  */
 static void __xen_evtchn_do_upcall(struct pt_regs *regs)
 {
+	int start_word_idx, start_bit_idx;
+	int word_idx, bit_idx;
+	int i;
 	int cpu = get_cpu();
 	struct shared_info *s = HYPERVISOR_shared_info;
 	struct vcpu_info *vcpu_info = __get_cpu_var(xen_vcpu);
@@ -1099,16 +1109,56 @@ static void __xen_evtchn_do_upcall(struct pt_regs *regs)
 		wmb();
 #endif
 		pending_words = xchg(&vcpu_info->evtchn_pending_sel, 0);
-		while (pending_words != 0) {
-			unsigned long pending_bits;
-			int word_idx = __ffs(pending_words);
-			pending_words &= ~(1UL << word_idx);
 
-			while ((pending_bits = active_evtchns(cpu, s, word_idx)) != 0) {
-				int bit_idx = __ffs(pending_bits);
-				int port = (word_idx * BITS_PER_LONG) + bit_idx;
-				int irq = evtchn_to_irq[port];
+		start_word_idx = __get_cpu_var(current_word_idx);
+		start_bit_idx = __get_cpu_var(current_bit_idx);
+
+		word_idx = start_word_idx;
+
+		for (i = 0; pending_words != 0; i++) {
+			unsigned long pending_bits;
+			unsigned long words;
+
+			words = MASK_LSBS(pending_words, word_idx);
+
+			/*
+			 * If we masked out all events, wrap to beginning.
+			 */
+			if (words == 0) {
+				word_idx = 0;
+				bit_idx = 0;
+				continue;
+			}
+			word_idx = __ffs(words);
+
+			pending_bits = active_evtchns(cpu, s, word_idx);
+			bit_idx = 0; /* usually scan entire word from start */
+			if (word_idx == start_word_idx) {
+				/* We scan the starting word in two parts */
+				if (i == 0)
+					/* 1st time: start in the middle */
+					bit_idx = start_bit_idx;
+				else
+					/* 2nd time: mask bits done already */
+					bit_idx &= (1UL << start_bit_idx) - 1;
+			}
+
+			do {
+				unsigned long bits;
+				int port, irq;
 				struct irq_desc *desc;
+
+				bits = MASK_LSBS(pending_bits, bit_idx);
+
+				/* If we masked out all events, move on. */
+				if (bits == 0)
+					break;
+
+				bit_idx = __ffs(bits);
+
+				/* Process port. */
+				port = (word_idx * BITS_PER_LONG) + bit_idx;
+				irq = evtchn_to_irq[port];
 
 				mask_evtchn(port);
 				clear_evtchn(port);
@@ -1118,7 +1168,21 @@ static void __xen_evtchn_do_upcall(struct pt_regs *regs)
 					if (desc)
 						generic_handle_irq_desc(irq, desc);
 				}
-			}
+
+				bit_idx = (bit_idx + 1) % BITS_PER_LONG;
+
+				/* Next caller starts at last processed + 1 */
+				__get_cpu_var(current_word_idx) =
+						 bit_idx ? word_idx :
+						 (word_idx+1) % BITS_PER_LONG;
+				__get_cpu_var(current_bit_idx) = bit_idx;
+			} while (bit_idx != 0);
+
+			/* Scan start_l1i twice; all others once. */
+			if ((word_idx != start_word_idx) || (i != 0))
+				pending_words &= ~(1UL << word_idx);
+
+			word_idx = (word_idx + 1) % BITS_PER_LONG;
 		}
 
 		BUG_ON(!irqs_disabled());
