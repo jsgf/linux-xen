@@ -8,7 +8,6 @@
 #include <asm/page.h>
 #include <asm/page_types.h>
 #include <asm/sections.h>
-#include <asm/setup.h>
 #include <asm/system.h>
 #include <asm/tlbflush.h>
 #include <asm/tlb.h>
@@ -288,23 +287,8 @@ unsigned long __init_refok init_memory_mapping(unsigned long start,
 #endif
 
 #ifdef CONFIG_X86_64
-	if (!after_bootmem && !start) {
-		pud_t *pud;
-		pmd_t *pmd;
-
+	if (!after_bootmem)
 		mmu_cr4_features = read_cr4();
-
-		/*
-		 * _brk_end cannot change anymore, but it and _end may be
-		 * located on different 2M pages. cleanup_highmap(), however,
-		 * can only consider _end when it runs, so destroy any
-		 * mappings beyond _brk_end here.
-		 */
-		pud = pud_offset(pgd_offset_k(_brk_end), _brk_end);
-		pmd = pmd_offset(pud, _brk_end - 1);
-		while (++pmd <= pmd_offset(pud, (unsigned long)_end - 1))
-			pmd_clear(pmd);
-	}
 #endif
 	__flush_tlb_all();
 
