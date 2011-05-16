@@ -750,6 +750,27 @@ static u32 xen_safe_apic_wait_icr_idle(void)
         return 0;
 }
 
+static __init int xen_safe_flat_acpi_madt_oem_check(char *oem_id,
+						    char *oem_table_id)
+{
+	if (!xen_initial_domain())
+		return 0;
+
+	return 1;
+}
+
+static __init int xen_safe_probe(void) {
+
+	if (!xen_initial_domain())
+		return 0;
+
+	return 1;
+}
+
+struct apic apic_xen = {
+	.name	= "xen",
+};
+
 static __init void set_xen_basic_apic_ops(void)
 {
 	apic->read = xen_apic_read;
@@ -758,6 +779,11 @@ static __init void set_xen_basic_apic_ops(void)
 	apic->icr_write = xen_apic_icr_write;
 	apic->wait_icr_idle = xen_apic_wait_icr_idle;
 	apic->safe_wait_icr_idle = xen_safe_apic_wait_icr_idle;
+	apic->probe = xen_safe_probe;
+	apic->acpi_madt_oem_check  = xen_safe_flat_acpi_madt_oem_check;
+	/* Copy over the full contents of the newly modified apic into
+	 * our apic_xen, which is to be called first by apic_probe[]. */
+	memcpy(&apic_xen, apic, sizeof(struct apic));
 }
 
 #endif

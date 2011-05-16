@@ -409,6 +409,8 @@ static void dispatch_rw_block_io(blkif_t *blkif,
 		break;
 	case BLKIF_OP_WRITE_BARRIER:
 		operation = WRITE_BARRIER;
+		/* vbd_translate is alergic to bizzare sectors. */
+		req->sector_number = 0;
 		break;
 	default:
 		operation = 0; /* make gcc happy */
