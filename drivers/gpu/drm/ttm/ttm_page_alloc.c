@@ -664,9 +664,9 @@ out:
  * On success pages list will hold count number of correctly
  * cached pages.
  */
-int ttm_get_pages(struct list_head *pages, int flags,
-		  enum ttm_caching_state cstate, unsigned count,
-		  dma_addr_t *dma_address)
+int __ttm_get_pages(struct list_head *pages, int flags,
+		    enum ttm_caching_state cstate, unsigned count,
+		    dma_addr_t *dma_address)
 {
 	struct ttm_page_pool *pool = ttm_get_pool(flags, cstate);
 	struct page *p = NULL;
@@ -734,8 +734,8 @@ int ttm_get_pages(struct list_head *pages, int flags,
 }
 
 /* Put all pages in pages list to correct pool to wait for reuse */
-void ttm_put_pages(struct list_head *pages, unsigned page_count, int flags,
-		   enum ttm_caching_state cstate, dma_addr_t *dma_address)
+void __ttm_put_pages(struct list_head *pages, unsigned page_count, int flags,
+		     enum ttm_caching_state cstate, dma_addr_t *dma_address)
 {
 	unsigned long irq_flags;
 	struct ttm_page_pool *pool = ttm_get_pool(flags, cstate);
@@ -785,7 +785,7 @@ static void ttm_page_pool_init_locked(struct ttm_page_pool *pool, int flags,
 	pool->name = name;
 }
 
-int ttm_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
+int __ttm_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
 {
 	int ret;
 
@@ -822,7 +822,7 @@ int ttm_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
 	return 0;
 }
 
-void ttm_page_alloc_fini(void)
+void __ttm_page_alloc_fini(void)
 {
 	int i;
 
@@ -836,7 +836,7 @@ void ttm_page_alloc_fini(void)
 	_manager = NULL;
 }
 
-int ttm_page_alloc_debugfs(struct seq_file *m, void *data)
+int __ttm_page_alloc_debugfs(struct seq_file *m, void *data)
 {
 	struct ttm_page_pool *p;
 	unsigned i;
@@ -855,5 +855,47 @@ int ttm_page_alloc_debugfs(struct seq_file *m, void *data)
 				p->nfrees, p->npages);
 	}
 	return 0;
+}
+
+struct ttm_page_alloc_func ttm_page_alloc_default = {
+	.get_pages	= __ttm_get_pages,
+	.put_pages	= __ttm_put_pages,
+	.alloc_init	= __ttm_page_alloc_init,
+	.alloc_fini	= __ttm_page_alloc_fini,
+	.debugfs	= __ttm_page_alloc_debugfs,
+};
+
+int ttm_get_pages(struct list_head *pages, int flags,
+		  enum ttm_caching_state cstate, unsigned count,
+		  dma_addr_t *dma_address)
+{
+	if (ttm_page_alloc && ttm_page_alloc->get_pages)
+		return ttm_page_alloc->get_pages(pages, flags, cstate, count,
+						 dma_address);
+	return -1;
+}
+void ttm_put_pages(struct list_head *pages, unsigned page_count, int flags,
+		   enum ttm_caching_state cstate, dma_addr_t *dma_address)
+{
+	if (ttm_page_alloc && ttm_page_alloc->put_pages)
+		ttm_page_alloc->put_pages(pages, page_count, flags, cstate,
+					  dma_address);
+}
+int ttm_page_alloc_init(struct ttm_mem_global *glob, unsigned max_pages)
+{
+	if (ttm_page_alloc && ttm_page_alloc->alloc_init)
+		return ttm_page_alloc->alloc_init(glob, max_pages);
+	return -1;
+}
+void ttm_page_alloc_fini(void)
+{
+	if (ttm_page_alloc && ttm_page_alloc->alloc_fini)
+		ttm_page_alloc->alloc_fini();
+}
+int ttm_page_alloc_debugfs(struct seq_file *m, void *data)
+{
+	if (ttm_page_alloc && ttm_page_alloc->debugfs)
+		ttm_page_alloc->debugfs(m, data);
+	return -1;
 }
 EXPORT_SYMBOL(ttm_page_alloc_debugfs);
