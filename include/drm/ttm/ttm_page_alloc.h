@@ -29,6 +29,11 @@
 #include "ttm_bo_driver.h"
 #include "ttm_memory.h"
 
+#ifdef CONFIG_SWIOTLB
+#include <linux/dma-mapping.h>
+#include <linux/swiotlb.h>
+#endif
+
 struct ttm_page_alloc_func {
 	/**
 	 * struct ttm_page_alloc_func member get_pages
@@ -95,6 +100,21 @@ extern struct ttm_page_alloc_func *ttm_page_alloc;
 /* Defined in ttm_page_alloc.c */
 extern struct ttm_page_alloc_func ttm_page_alloc_default;
 
+#ifdef CONFIG_SWIOTLB
+/* Defined in ttm_page_alloc_dma.c */
+extern struct ttm_page_alloc_func ttm_page_alloc_dma;
+
+static inline bool ttm_page_alloc_need_dma(void)
+{
+	if (swiotlb_enabled()) {
+		ttm_page_alloc = &ttm_page_alloc_dma;
+		return true;
+	}
+	return false;
+}
+#else
+static inline bool ttm_page_alloc_need_dma(void) { return false; }
+#endif
 /**
  * Get count number of pages from pool to pages list.
  *
