@@ -898,7 +898,7 @@ void ttm_page_alloc_fini(void)
 int ttm_page_alloc_debugfs(struct seq_file *m, void *data)
 {
 	if (ttm_page_alloc && ttm_page_alloc->debugfs)
-		ttm_page_alloc->debugfs(m, data);
+		return ttm_page_alloc->debugfs(m, data);
 	return -1;
 }
 EXPORT_SYMBOL(ttm_page_alloc_debugfs);
