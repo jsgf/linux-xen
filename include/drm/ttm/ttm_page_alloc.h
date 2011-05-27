@@ -29,6 +29,68 @@
 #include "ttm_bo_driver.h"
 #include "ttm_memory.h"
 
+struct ttm_page_alloc_func {
+	/**
+	 * struct ttm_page_alloc_func member get_pages
+	 * Get count number of pages from pool to pages list.
+	 *
+	 * @pages: head of empty linked list where pages are filled.
+	 * @flags: ttm flags for page allocation.
+	 * @cstate: ttm caching state for the page.
+	 * @count: number of pages to allocate.
+	 * @dma_address: The DMA (bus) address of pages (if
+	 * TTM_PAGE_FLAG_DMA32 is set).
+	 */
+	int (*get_pages) (struct list_head *pages,
+			  int flags,
+			  enum ttm_caching_state cstate,
+			  unsigned count,
+			  dma_addr_t *dma_address);
+	/**
+	 * struct ttm_page_alloc_func member put_pages.
+	 *
+	 * Put linked list of pages to pool.
+	 *
+	 * @pages: list of pages to free.
+	 * @page_count: number of pages in the list. Zero can be passed for
+	 * unknown count.
+	 * @flags: ttm flags for page allocation.
+	 * @cstate: ttm caching state.
+	 * @dma_address: The DMA (bus) address of pages (if
+	 * TTM_PAGE_FLAG_DMA32 is set).
+	 */
+	void (*put_pages)(struct list_head *pages,
+			  unsigned page_count,
+			  int flags,
+			  enum ttm_caching_state cstate,
+			  dma_addr_t *dma_address);
+	/**
+	 * struct ttm_page_alloc_func member alloc_init.
+	 *
+	 * Initialize pool allocator.
+	 */
+	int (*alloc_init)(struct ttm_mem_global *glob, unsigned max_pages);
+
+	/**
+	 * struct ttm_page_alloc_func member alloc_fini.
+	 *
+	 * Free pool allocator.
+	 */
+	void (*alloc_fini)(void);
+
+	/**
+	 * struct ttm_page_alloc_func member debugfs.
+	 *
+	 * Output the state of pools to debugfs file
+	 */
+	int (*debugfs)(struct seq_file *m, void *data);
+};
+
+extern struct ttm_page_alloc_func *ttm_page_alloc;
+
+/* Defined in ttm_page_alloc.c */
+extern struct ttm_page_alloc_func ttm_page_alloc_default;
+
 /**
  * Get count number of pages from pool to pages list.
  *
