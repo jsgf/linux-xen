@@ -761,7 +761,7 @@ static __init int xen_safe_flat_acpi_madt_oem_check(char *oem_id,
 
 static __init int xen_safe_probe(void) {
 
-	if (!xen_initial_domain())
+	if (!xen_pv_domain())
 		return 0;
 
 	return 1;
