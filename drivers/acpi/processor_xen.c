@@ -311,7 +311,7 @@ static int __cpuinit xen_acpi_processor_add(struct acpi_device *device)
 	}
 
 	/* _PDC call should be done before doing anything else (if reqd.). */
-	acpi_processor_set_pdc(pr);
+	acpi_processor_set_pdc(pr->handle);
 
 #ifdef CONFIG_CPU_FREQ
 	xen_acpi_processor_ppc_has_changed(pr);
