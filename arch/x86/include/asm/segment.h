@@ -188,7 +188,7 @@
 #define __KERNEL_DS	(GDT_ENTRY_KERNEL_DS*8)
 #define __USER_DS	(GDT_ENTRY_DEFAULT_USER_DS*8+3)
 #define __USER_CS	(GDT_ENTRY_DEFAULT_USER_CS*8+3)
-#ifndef CONFIG_PARAVIRT
+#ifndef CONFIG_PARAVIRT_CPU
 #define get_kernel_rpl()  0
 #endif
 

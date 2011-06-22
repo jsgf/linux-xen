@@ -82,7 +82,7 @@ static inline int desc_empty(const void *ptr)
 	return !(desc[0] | desc[1]);
 }
 
-#ifdef CONFIG_PARAVIRT
+#ifdef CONFIG_PARAVIRT_CPU
 #include <asm/paravirt.h>
 #else
 #define load_TR_desc()				native_load_tr_desc()

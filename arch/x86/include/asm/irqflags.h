@@ -56,7 +56,7 @@ static inline void native_halt(void)
 
 #endif
 
-#ifdef CONFIG_PARAVIRT
+#ifdef CONFIG_PARAVIRT_CPU
 #include <asm/paravirt.h>
 #else
 #ifndef __ASSEMBLY__

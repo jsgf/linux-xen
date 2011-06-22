@@ -45,6 +45,7 @@ void common(void) {
 #ifdef CONFIG_PARAVIRT
 	BLANK();
 	OFFSET(PARAVIRT_enabled, pv_info, paravirt_enabled);
+#ifdef CONFIG_PARAVIRT_CPU
 	OFFSET(PARAVIRT_PATCH_pv_cpu_ops, paravirt_patch_template, pv_cpu_ops);
 	OFFSET(PARAVIRT_PATCH_pv_irq_ops, paravirt_patch_template, pv_irq_ops);
 	OFFSET(PV_IRQ_irq_disable, pv_irq_ops, irq_disable);
@@ -53,7 +54,8 @@ void common(void) {
 	OFFSET(PV_CPU_irq_enable_sysexit, pv_cpu_ops, irq_enable_sysexit);
 	OFFSET(PV_CPU_read_cr0, pv_cpu_ops, read_cr0);
 	OFFSET(PV_MMU_read_cr2, pv_mmu_ops, read_cr2);
-#endif
+#endif	/* CONFIG_PARAVIRT_CPU */
+#endif	/* CONFIG_PARAVIRT */
 
 #ifdef CONFIG_XEN
 	BLANK();

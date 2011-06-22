@@ -99,6 +99,7 @@ struct pv_time_ops {
 	unsigned long (*get_tsc_khz)(void);
 };
 
+#ifdef CONFIG_PARAVIRT_CPU
 struct pv_cpu_ops {
 	/* hooks for various privileged instructions */
 	unsigned long (*get_debugreg)(int regno);
@@ -325,6 +326,7 @@ struct pv_mmu_ops {
 	void (*set_fixmap)(unsigned /* enum fixed_addresses */ idx,
 			   phys_addr_t phys, pgprot_t flags);
 };
+#endif	/* CONFIG_PARAVIRT_CPU */
 
 struct arch_spinlock;
 struct pv_lock_ops {
@@ -342,21 +344,25 @@ struct pv_lock_ops {
 struct paravirt_patch_template {
 	struct pv_init_ops pv_init_ops;
 	struct pv_time_ops pv_time_ops;
+	struct pv_lock_ops pv_lock_ops;
+#ifdef CONFIG_PARAVIRT_CPU
 	struct pv_cpu_ops pv_cpu_ops;
 	struct pv_irq_ops pv_irq_ops;
 	struct pv_apic_ops pv_apic_ops;
 	struct pv_mmu_ops pv_mmu_ops;
-	struct pv_lock_ops pv_lock_ops;
+#endif	/* CONFIG_PARAVIRT_CPU */
 };
 
 extern struct pv_info pv_info;
 extern struct pv_init_ops pv_init_ops;
 extern struct pv_time_ops pv_time_ops;
+extern struct pv_lock_ops pv_lock_ops;
+#ifdef CONFIG_PARAVIRT_CPU
 extern struct pv_cpu_ops pv_cpu_ops;
 extern struct pv_irq_ops pv_irq_ops;
 extern struct pv_apic_ops pv_apic_ops;
 extern struct pv_mmu_ops pv_mmu_ops;
-extern struct pv_lock_ops pv_lock_ops;
+#endif	/* CONFIG_PARAVIRT_CPU */
 
 #define PARAVIRT_PATCH(x)					\
 	(offsetof(struct paravirt_patch_template, x) / sizeof(void *))

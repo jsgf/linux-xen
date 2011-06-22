@@ -83,7 +83,7 @@ struct smp_ops {
 extern void set_cpu_sibling_map(int cpu);
 
 #ifdef CONFIG_SMP
-#ifndef CONFIG_PARAVIRT
+#ifndef CONFIG_PARAVIRT_CPU
 #define startup_ipi_hook(phys_apicid, start_eip, start_esp) do { } while (0)
 #endif
 extern struct smp_ops smp_ops;

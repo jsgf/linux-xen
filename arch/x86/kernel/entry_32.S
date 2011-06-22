@@ -554,7 +554,7 @@ ldt_ss:
 	testl $0x00400000, %eax		# returning to 32bit stack?
 	jnz restore_nocheck		# allright, normal return
 
-#ifdef CONFIG_PARAVIRT
+#ifdef CONFIG_PARAVIRT_CPU
 	/*
 	 * The kernel can't run on a non-flat stack if paravirt mode
 	 * is active.  Rather than try to fixup the high bits of
@@ -895,7 +895,7 @@ ENTRY(device_not_available)
 	CFI_ENDPROC
 END(device_not_available)
 
-#ifdef CONFIG_PARAVIRT
+#ifdef CONFIG_PARAVIRT_CPU
 ENTRY(native_iret)
 	iret
 .section __ex_table,"a"

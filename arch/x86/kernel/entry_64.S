@@ -171,12 +171,12 @@ GLOBAL(return_to_handler)
 #define retint_kernel retint_restore_args
 #endif
 
-#ifdef CONFIG_PARAVIRT
+#ifdef CONFIG_PARAVIRT_CPU
 ENTRY(native_usergs_sysret64)
 	swapgs
 	sysretq
 ENDPROC(native_usergs_sysret64)
-#endif /* CONFIG_PARAVIRT */
+#endif /* CONFIG_PARAVIRT_CPU */
 
 
 .macro TRACE_IRQS_IRETQ offset=ARGOFFSET
@@ -862,7 +862,7 @@ irq_return:
 	.quad irq_return, bad_iret
 	.previous
 
-#ifdef CONFIG_PARAVIRT
+#ifdef CONFIG_PARAVIRT_CPU
 ENTRY(native_iret)
 	iretq
 

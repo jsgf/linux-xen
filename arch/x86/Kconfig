@@ -588,6 +588,12 @@ config PARAVIRT_SPINLOCKS
 config PARAVIRT_CLOCK
 	bool
 
+config PARAVIRT_CPU
+	bool
+	depends on PARAVIRT
+	help
+	  Enable CPU paravirtalizations (pv_cpu_ops, pv_irq_ops,
+	  pv_mmu_ops, pv_apic_ops).
 endif
 
 config PARAVIRT_DEBUG

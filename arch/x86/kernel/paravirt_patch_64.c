@@ -2,6 +2,7 @@
 #include <asm/asm-offsets.h>
 #include <linux/stringify.h>
 
+#ifdef CONFIG_PARAVIRT_CPU
 DEF_NATIVE(pv_irq_ops, irq_disable, "cli");
 DEF_NATIVE(pv_irq_ops, irq_enable, "sti");
 DEF_NATIVE(pv_irq_ops, restore_fl, "pushq %rdi; popfq");
@@ -18,6 +19,7 @@ DEF_NATIVE(pv_cpu_ops, irq_enable_sysexit, "swapgs; sti; sysexit");
 DEF_NATIVE(pv_cpu_ops, usergs_sysret64, "swapgs; sysretq");
 DEF_NATIVE(pv_cpu_ops, usergs_sysret32, "swapgs; sysretl");
 DEF_NATIVE(pv_cpu_ops, swapgs, "swapgs");
+#endif	/* CONFIG_PARAVIRT_CPU */
 
 DEF_NATIVE(, mov32, "mov %edi, %eax");
 DEF_NATIVE(, mov64, "mov %rdi, %rax");
@@ -46,6 +48,7 @@ unsigned native_patch(u8 type, u16 clobbers, void *ibuf,
 			end = end_##ops##_##x;			\
 			goto patch_site
 	switch(type) {
+#ifdef CONFIG_PARAVIRT_CPU
 		PATCH_SITE(pv_irq_ops, restore_fl);
 		PATCH_SITE(pv_irq_ops, save_fl);
 		PATCH_SITE(pv_irq_ops, irq_enable);
@@ -61,6 +64,7 @@ unsigned native_patch(u8 type, u16 clobbers, void *ibuf,
 		PATCH_SITE(pv_cpu_ops, clts);
 		PATCH_SITE(pv_mmu_ops, flush_tlb_single);
 		PATCH_SITE(pv_cpu_ops, wbinvd);
+#endif	/* CONFIG_PARAVIRT_CPU */
 
 	patch_site:
 		ret = paravirt_patch_insns(ibuf, len, start, end);

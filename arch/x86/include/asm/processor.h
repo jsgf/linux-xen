@@ -566,11 +566,11 @@ static inline void native_swapgs(void)
 #endif
 }
 
-#ifdef CONFIG_PARAVIRT
+#ifdef CONFIG_PARAVIRT_CPU
 #include <asm/paravirt.h>
 #else
-#define __cpuid			native_cpuid
 #define paravirt_enabled()	0
+#define __cpuid			native_cpuid
 
 /*
  * These special macros can be used to get or set a debugging register

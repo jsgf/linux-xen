@@ -1,5 +1,6 @@
 #include <asm/paravirt.h>
 
+#ifdef CONFIG_PARAVIRT_CPU
 DEF_NATIVE(pv_irq_ops, irq_disable, "cli");
 DEF_NATIVE(pv_irq_ops, irq_enable, "sti");
 DEF_NATIVE(pv_irq_ops, restore_fl, "push %eax; popf");
@@ -11,6 +12,7 @@ DEF_NATIVE(pv_mmu_ops, write_cr3, "mov %eax, %cr3");
 DEF_NATIVE(pv_mmu_ops, read_cr3, "mov %cr3, %eax");
 DEF_NATIVE(pv_cpu_ops, clts, "clts");
 DEF_NATIVE(pv_cpu_ops, read_tsc, "rdtsc");
+#endif	/* CONFIG_PARAVIRT_CPU */
 
 unsigned paravirt_patch_ident_32(void *insnbuf, unsigned len)
 {
@@ -36,6 +38,7 @@ unsigned native_patch(u8 type, u16 clobbers, void *ibuf,
 			end = end_##ops##_##x;			\
 			goto patch_site
 	switch (type) {
+#ifdef CONFIG_PARAVIRT_CPU
 		PATCH_SITE(pv_irq_ops, irq_disable);
 		PATCH_SITE(pv_irq_ops, irq_enable);
 		PATCH_SITE(pv_irq_ops, restore_fl);
@@ -47,6 +50,7 @@ unsigned native_patch(u8 type, u16 clobbers, void *ibuf,
 		PATCH_SITE(pv_mmu_ops, write_cr3);
 		PATCH_SITE(pv_cpu_ops, clts);
 		PATCH_SITE(pv_cpu_ops, read_tsc);
+#endif	/* CONFIG_PARAVIRT_CPU */
 
 	patch_site:
 		ret = paravirt_patch_insns(ibuf, len, start, end);

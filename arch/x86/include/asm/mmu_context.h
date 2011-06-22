@@ -6,7 +6,7 @@
 #include <asm/pgalloc.h>
 #include <asm/tlbflush.h>
 #include <asm/paravirt.h>
-#ifndef CONFIG_PARAVIRT
+#ifndef CONFIG_PARAVIRT_CPU
 #include <asm-generic/mm_hooks.h>
 
 static inline void paravirt_activate_mm(struct mm_struct *prev,

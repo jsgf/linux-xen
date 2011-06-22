@@ -13,6 +13,12 @@
 #include <linux/types.h>
 #include <linux/cpumask.h>
 
+#ifdef CONFIG_PARAVIRT_CPU
+/*
+ * Even though this isn't part of pv_cpu_ops, it probably should be,
+ * and logically is - it's only set if we're running in some kind of
+ * strange (=not fully emulated) CPU environment.
+ */
 static inline int paravirt_enabled(void)
 {
 	return pv_info.paravirt_enabled;
@@ -224,6 +230,7 @@ do {						\
 } while (0)
 
 #define rdtscll(val) (val = paravirt_read_tsc())
+#endif	/* CONFIG_PARAVIRT_CPU */
 
 static inline unsigned long long paravirt_sched_clock(void)
 {
@@ -239,6 +246,7 @@ static inline u64 paravirt_steal_clock(int cpu)
 	return PVOP_CALL1(u64, pv_time_ops.steal_clock, cpu);
 }
 
+#ifdef CONFIG_PARAVIRT_CPU
 static inline unsigned long long paravirt_read_pmc(int counter)
 {
 	return PVOP_CALL1(u64, pv_cpu_ops.read_pmc, counter);
@@ -747,6 +755,7 @@ static inline void __set_fixmap(unsigned /* enum fixed_addresses */ idx,
 {
 	pv_mmu_ops.set_fixmap(idx, phys, flags);
 }
+#endif	/* CONFIG_PARAVIRT_CPU */
 
 #if defined(CONFIG_SMP) && defined(CONFIG_PARAVIRT_SPINLOCKS)
 
@@ -782,7 +791,7 @@ static __always_inline void arch_spin_unlock(struct arch_spinlock *lock)
 	PVOP_VCALL1(pv_lock_ops.spin_unlock, lock);
 }
 
-#endif
+#endif	/* CONFIG_PARAVIRT_SPINLOCK */
 
 #ifdef CONFIG_X86_32
 #define PV_SAVE_REGS "pushl %ecx; pushl %edx;"
@@ -857,6 +866,7 @@ static __always_inline void arch_spin_unlock(struct arch_spinlock *lock)
 #define __PV_IS_CALLEE_SAVE(func)			\
 	((struct paravirt_callee_save) { func })
 
+#ifdef CONFIG_PARAVIRT_CPU
 static inline notrace unsigned long arch_local_save_flags(void)
 {
 	return PVOP_CALLEE0(unsigned long, pv_irq_ops.save_fl);
@@ -885,7 +895,7 @@ static inline notrace unsigned long arch_local_irq_save(void)
 	arch_local_irq_disable();
 	return f;
 }
-
+#endif	/* CONFIG_PARAVIRT_CPU */
 
 /* Make sure as little as possible of this mess escapes. */
 #undef PARAVIRT_CALL
@@ -967,6 +977,7 @@ extern void default_banner(void);
 #define PARA_INDIRECT(addr)	*%cs:addr
 #endif
 
+#ifdef CONFIG_PARAVIRT_CPU
 #define INTERRUPT_RETURN						\
 	PARA_SITE(PARA_PATCH(pv_cpu_ops, PV_CPU_iret), CLBR_NONE,	\
 		  jmp PARA_INDIRECT(pv_cpu_ops+PV_CPU_iret))
@@ -1042,6 +1053,7 @@ extern void default_banner(void);
 		  CLBR_NONE,						\
 		  jmp PARA_INDIRECT(pv_cpu_ops+PV_CPU_irq_enable_sysexit))
 #endif	/* CONFIG_X86_32 */
+#endif	/* CONFIG_PARAVIRT_CPU */
 
 #endif /* __ASSEMBLY__ */
 #else  /* CONFIG_PARAVIRT */

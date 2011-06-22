@@ -230,7 +230,7 @@ page_pde_offset = (__PAGE_OFFSET >> 20);
 	movl %eax,pa(initial_page_table+0xffc)
 #endif
 
-#ifdef CONFIG_PARAVIRT
+#ifdef CONFIG_PARAVIRT_CPU
 	/* This is can only trip for a broken bootloader... */
 	cmpw $0x207, pa(boot_params + BP_version)
 	jb default_entry
@@ -263,7 +263,7 @@ num_subarch_entries = (. - subarch_entries) / 4
 .previous
 #else
 	jmp default_entry
-#endif /* CONFIG_PARAVIRT */
+#endif /* CONFIG_PARAVIRT_CPU */
 
 /*
  * Non-boot CPU entry point; entered from trampoline.S
