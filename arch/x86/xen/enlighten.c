@@ -97,6 +97,7 @@ EXPORT_SYMBOL_GPL(xen_have_vector_callback);
  */
 struct shared_info *HYPERVISOR_shared_info = (void *)&xen_dummy_shared_info;
 
+#ifdef CONFIG_XEN_PV
 /*
  * Flag to determine whether vcpu info placement is available on all
  * VCPUs.  We assume it is to start with, and then set it to zero on
@@ -893,6 +894,7 @@ void xen_setup_vcpu_info_placement(void)
 		pv_mmu_ops.read_cr2 = xen_read_cr2_direct;
 	}
 }
+#endif	/* CONFIG_XEN_PV */
 
 static unsigned xen_patch(u8 type, u16 clobbers, void *insnbuf,
 			  unsigned long addr, unsigned len)
@@ -902,6 +904,8 @@ static unsigned xen_patch(u8 type, u16 clobbers, void *insnbuf,
 
 	start = end = reloc = NULL;
 
+	switch (type) {
+#ifdef CONFIG_XEN_PV
 #define SITE(op, x)							\
 	case PARAVIRT_PATCH(op.x):					\
 	if (have_vcpu_info_placement) {					\
@@ -911,7 +915,6 @@ static unsigned xen_patch(u8 type, u16 clobbers, void *insnbuf,
 	}								\
 	goto patch_site
 
-	switch (type) {
 		SITE(pv_irq_ops, irq_enable);
 		SITE(pv_irq_ops, irq_disable);
 		SITE(pv_irq_ops, save_fl);
@@ -919,6 +922,8 @@ static unsigned xen_patch(u8 type, u16 clobbers, void *insnbuf,
 #undef SITE
 
 	patch_site:
+#endif	/* CONFIG_XEN_PV */
+
 		if (start == NULL || (end-start) > len)
 			goto default_patch;
 
@@ -962,6 +967,7 @@ static const struct pv_init_ops xen_init_ops __initconst = {
 	.patch = xen_patch,
 };
 
+#ifdef CONFIG_XEN_PV
 static const struct pv_cpu_ops xen_cpu_ops __initconst = {
 	.cpuid = xen_cpuid,
 
@@ -1290,6 +1296,7 @@ asmlinkage void __init xen_start_kernel(void)
 	x86_64_start_reservations((char *)__pa_symbol(&boot_params));
 #endif
 }
+#endif	/* CONFIG_XEN_PV */
 
 static int init_hvm_pv_info(int *major, int *minor)
 {
@@ -1385,10 +1392,16 @@ static void __init xen_hvm_guest_init(void)
 	xen_hvm_smp_init();
 	register_cpu_notifier(&xen_hvm_cpu_notifier);
 	xen_unplug_emulated_devices();
-	have_vcpu_info_placement = 0;
 	x86_init.irqs.intr_init = xen_init_IRQ;
 	xen_hvm_init_time_ops();
+
+#ifdef CONFIG_PARAVIRT_CPU
 	xen_hvm_init_mmu_ops();
+#endif
+
+#ifdef CONFIG_XEN_PV
+	have_vcpu_info_placement = 0;
+#endif
 }
 
 static bool __init xen_hvm_platform(void)

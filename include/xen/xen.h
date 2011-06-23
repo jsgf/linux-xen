@@ -14,8 +14,13 @@ extern enum xen_domain_type xen_domain_type;
 #endif
 
 #define xen_domain()		(xen_domain_type != XEN_NATIVE)
+#ifdef CONFIG_XEN_PV
 #define xen_pv_domain()		(xen_domain() &&			\
 				 xen_domain_type == XEN_PV_DOMAIN)
+#else
+#define xen_pv_domain()		(0)
+#endif
+
 #define xen_hvm_domain()	(xen_domain() &&			\
 				 xen_domain_type == XEN_HVM_DOMAIN)
 

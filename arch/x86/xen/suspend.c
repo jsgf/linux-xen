@@ -14,6 +14,7 @@
 
 void xen_arch_pre_suspend(void)
 {
+#ifdef CONFIG_XEN_PV
 	xen_start_info->store_mfn = mfn_to_pfn(xen_start_info->store_mfn);
 	xen_start_info->console.domU.mfn =
 		mfn_to_pfn(xen_start_info->console.domU.mfn);
@@ -24,6 +25,7 @@ void xen_arch_pre_suspend(void)
 	if (HYPERVISOR_update_va_mapping(fix_to_virt(FIX_PARAVIRT_BOOTMAP),
 					 __pte_ma(0), 0))
 		BUG();
+#endif	/* CONFIG_XEN_PV */
 }
 
 void xen_arch_hvm_post_suspend(int suspend_cancelled)
@@ -38,11 +40,12 @@ void xen_arch_hvm_post_suspend(int suspend_cancelled)
 			xen_setup_runstate_info(cpu);
 		}
 	}
-#endif
+#endif	/* CONFIG_XEN_PVHVM */
 }
 
 void xen_arch_post_suspend(int suspend_cancelled)
 {
+#ifdef CONFIG_XEN_PV
 	xen_build_mfn_list_list();
 
 	xen_setup_shared_info();
@@ -59,7 +62,7 @@ void xen_arch_post_suspend(int suspend_cancelled)
 #endif
 		xen_vcpu_restore();
 	}
-
+#endif	/* CONFIG_XEN_PV */
 }
 
 static void xen_vcpu_notify_restore(void *data)

@@ -1,7 +1,16 @@
 /* Xen-specific pieces of head.S, intended to be included in the right
 	place in head.S */
 
+
 #ifdef CONFIG_XEN
+.pushsection .text
+	.align PAGE_SIZE
+ENTRY(hypercall_page)
+	.skip PAGE_SIZE
+.popsection
+#endif
+
+#ifdef CONFIG_XEN_PV
 
 #include <linux/elfnote.h>
 #include <linux/init.h>
@@ -27,12 +36,6 @@ ENTRY(startup_xen)
 
 	__FINIT
 
-.pushsection .text
-	.align PAGE_SIZE
-ENTRY(hypercall_page)
-	.skip PAGE_SIZE
-.popsection
-
 	ELFNOTE(Xen, XEN_ELFNOTE_GUEST_OS,       .asciz "linux")
 	ELFNOTE(Xen, XEN_ELFNOTE_GUEST_VERSION,  .asciz "2.6")
 	ELFNOTE(Xen, XEN_ELFNOTE_XEN_VERSION,    .asciz "xen-3.0")
@@ -52,4 +55,4 @@ ENTRY(hypercall_page)
 	ELFNOTE(Xen, XEN_ELFNOTE_HV_START_LOW,   _ASM_PTR __HYPERVISOR_VIRT_START)
 	ELFNOTE(Xen, XEN_ELFNOTE_PADDR_OFFSET,   _ASM_PTR 0)
 
-#endif /*CONFIG_XEN */
+#endif /* CONFIG_XEN_PV */

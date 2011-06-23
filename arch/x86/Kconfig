@@ -1924,7 +1924,7 @@ config PCI_OLPC
 
 config PCI_XEN
 	def_bool y
-	depends on PCI && XEN
+	depends on PCI && XEN_PV
 	select SWIOTLB_XEN
 
 config PCI_DOMAINS

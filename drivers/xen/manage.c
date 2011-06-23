@@ -50,6 +50,9 @@ static void xen_hvm_post_suspend(int cancelled)
 
 static void xen_pre_suspend(void)
 {
+	if (!xen_pv_domain())
+		return;
+
 	xen_mm_pin_all();
 	gnttab_suspend();
 	xen_arch_pre_suspend();
@@ -57,12 +60,15 @@ static void xen_pre_suspend(void)
 
 static void xen_post_suspend(int cancelled)
 {
+	if (!xen_pv_domain())
+		return;
+
 	xen_arch_post_suspend(cancelled);
 	gnttab_resume();
 	xen_mm_unpin_all();
 }
 
-#ifdef CONFIG_HIBERNATE_CALLBACKS
+#ifdef CONFIG_XEN_SAVE_RESTORE
 static int xen_suspend(void *data)
 {
 	struct suspend_info *si = data;
@@ -140,7 +146,7 @@ static void do_suspend(void)
 		si.arg = 0UL;
 		si.pre = NULL;
 		si.post = &xen_hvm_post_suspend;
-	} else {
+	} else if (xen_pv_domain()) {
 		si.arg = virt_to_mfn(xen_start_info);
 		si.pre = &xen_pre_suspend;
 		si.post = &xen_post_suspend;
@@ -174,7 +180,7 @@ out:
 #endif
 	shutting_down = SHUTDOWN_INVALID;
 }
-#endif	/* CONFIG_HIBERNATE_CALLBACKS */
+#endif	/* CONFIG_XEN_SAVE_RESTORE */
 
 struct shutdown_handler {
 	const char *command;
@@ -203,7 +209,7 @@ static void shutdown_handler(struct xenbus_watch *watch,
 		{ "poweroff",	do_poweroff },
 		{ "halt",	do_poweroff },
 		{ "reboot",	do_reboot   },
-#ifdef CONFIG_HIBERNATE_CALLBACKS
+#ifdef CONFIG_XEN_SAVE_RESTORE
 		{ "suspend",	do_suspend  },
 #endif
 		{NULL, NULL},

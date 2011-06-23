@@ -10,10 +10,11 @@ nostackp := $(call cc-option, -fno-stack-protector)
 CFLAGS_enlighten.o		:= $(nostackp)
 CFLAGS_mmu.o			:= $(nostackp)
 
-obj-y		:= enlighten.o setup.o multicalls.o mmu.o irq.o \
-			time.o xen-asm.o xen-asm_$(BITS).o \
+obj-y		:= enlighten.o multicalls.o time.o \
 			grant-table.o suspend.o platform-pci-unplug.o \
 			p2m.o
+
+obj-$(XEN_PV)	:= irq.o setup.o xen-asm.o xen-asm_$(BITS).o mmu.o
 
 obj-$(CONFIG_EVENT_TRACING) += trace.o
 

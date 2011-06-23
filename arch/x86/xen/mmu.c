@@ -84,6 +84,7 @@
  */
 DEFINE_SPINLOCK(xen_reservation_lock);
 
+#ifdef CONFIG_XEN_PV
 /*
  * Identity map, in addition to plain kernel map.  This needs to be
  * large enough to allocate page table pages to allocate the rest.
@@ -182,7 +183,6 @@ void make_lowmem_page_readwrite(void *vaddr)
 	if (HYPERVISOR_update_va_mapping(address, ptev, 0))
 		BUG();
 }
-
 
 static bool xen_page_pinned(void *ptr)
 {
@@ -2107,7 +2107,9 @@ void __init xen_init_mmu_ops(void)
 
 	memset(dummy_mapping, 0xff, PAGE_SIZE);
 }
+#endif			   /* CONFIG_XEN_PV */
 
+#ifdef CONFIG_XEN_PV
 /* Protected by xen_reservation_lock. */
 #define MAX_CONTIG_ORDER 9 /* 2MB */
 static unsigned long discontig_frames[1<<MAX_CONTIG_ORDER];
@@ -2303,8 +2305,9 @@ void xen_destroy_contiguous_region(unsigned long vstart, unsigned int order)
 	spin_unlock_irqrestore(&xen_reservation_lock, flags);
 }
 EXPORT_SYMBOL_GPL(xen_destroy_contiguous_region);
+#endif	/* CONFIG_XEN_PV */
 
-#ifdef CONFIG_XEN_PVHVM
+#if defined(CONFIG_XEN_PVHVM) && defined(CONFIG_PARAVIRT_CPU)
 static void xen_hvm_exit_mmap(struct mm_struct *mm)
 {
 	struct xen_hvm_pagetable_dying a;
@@ -2336,8 +2339,9 @@ void __init xen_hvm_init_mmu_ops(void)
 	if (is_pagetable_dying_supported())
 		pv_mmu_ops.exit_mmap = xen_hvm_exit_mmap;
 }
-#endif
+#endif	/* CONFIG_XEN_PVHVM && CONFIG_PARAVIRT_CPU */
 
+#ifdef CONFIG_XEN_PV
 #define REMAP_BATCH_SIZE 16
 
 struct remap_data {
@@ -2404,6 +2408,7 @@ out:
 	return err;
 }
 EXPORT_SYMBOL_GPL(xen_remap_domain_mfn_range);
+#endif	/* CONFIG_XEN_PV */
 
 #ifdef CONFIG_XEN_DEBUG_FS
 static int p2m_dump_open(struct inode *inode, struct file *filp)
