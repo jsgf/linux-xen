@@ -55,7 +55,7 @@ MODULE_PARM_DESC(limit, "Maximum number of grants that may be mapped by "
 
 static atomic_t pages_mapped = ATOMIC_INIT(0);
 
-static int use_ptemod;
+#define use_ptemod xen_pv_domain()
 
 struct gntdev_priv {
 	struct list_head maps;
@@ -743,8 +743,6 @@ static int __init gntdev_init(void)
 
 	if (!xen_domain())
 		return -ENODEV;
-
-	use_ptemod = xen_pv_domain();
 
 	err = misc_register(&gntdev_miscdev);
 	if (err != 0) {
