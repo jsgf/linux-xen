@@ -24,7 +24,12 @@ extern int swiotlb_force;
 
 extern void swiotlb_init(int verbose);
 extern void swiotlb_init_with_tbl(char *tlb, unsigned long nslabs, int verbose);
-extern unsigned long swioltb_nr_tbl(void);
+extern unsigned long swiotlb_nr_tbl(void);
+
+static inline bool swiotlb_enabled(void)
+{
+	return !!swiotlb_nr_tbl();
+}
 
 /*
  * Enumeration for sync targets
