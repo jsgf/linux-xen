@@ -12,6 +12,7 @@
 
 #include <acpi/acpi_drivers.h>
 #include <acpi/processor.h>
+#include <xen/acpi.h>
 
 #include "internal.h"
 
