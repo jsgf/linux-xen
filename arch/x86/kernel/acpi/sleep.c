@@ -15,6 +15,8 @@
 #include <asm/pgtable.h>
 #include <asm/cacheflush.h>
 
+#include <xen/acpi.h>
+
 #include "realmode/wakeup.h"
 #include "sleep.h"
 
