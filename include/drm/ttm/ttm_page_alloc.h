@@ -103,10 +103,10 @@ extern struct ttm_page_alloc_func ttm_page_alloc_default;
 #ifdef CONFIG_SWIOTLB
 /* Defined in ttm_page_alloc_dma.c */
 extern struct ttm_page_alloc_func ttm_page_alloc_dma;
-
+extern bool dma_ttm_disable;
 static inline bool ttm_page_alloc_need_dma(void)
 {
-	if (swiotlb_enabled()) {
+	if (!dma_ttm_disable && swiotlb_enabled()) {
 		ttm_page_alloc = &ttm_page_alloc_dma;
 		return true;
 	}
