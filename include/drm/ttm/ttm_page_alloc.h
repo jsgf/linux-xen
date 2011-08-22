@@ -29,6 +29,92 @@
 #include "ttm_bo_driver.h"
 #include "ttm_memory.h"
 
+#ifdef CONFIG_SWIOTLB
+#include <linux/dma-mapping.h>
+#include <linux/swiotlb.h>
+#endif
+
+struct ttm_page_alloc_func {
+	/**
+	 * struct ttm_page_alloc_func member get_pages
+	 * Get count number of pages from pool to pages list.
+	 *
+	 * @pages: head of empty linked list where pages are filled.
+	 * @flags: ttm flags for page allocation.
+	 * @cstate: ttm caching state for the page.
+	 * @count: number of pages to allocate.
+	 * @dma_address: The DMA (bus) address of pages (if
+	 * TTM_PAGE_FLAG_DMA32 is set).
+	 * @dev: The device that needs this (optional if DMA32 is not set)
+	 */
+	int (*get_pages) (struct list_head *pages,
+			  int flags,
+			  enum ttm_caching_state cstate,
+			  unsigned count,
+			  dma_addr_t *dma_address,
+			  struct device *dev);
+	/**
+	 * struct ttm_page_alloc_func member put_pages.
+	 *
+	 * Put linked list of pages to pool.
+	 *
+	 * @pages: list of pages to free.
+	 * @page_count: number of pages in the list. Zero can be passed for
+	 * unknown count.
+	 * @flags: ttm flags for page allocation.
+	 * @cstate: ttm caching state.
+	 * @dma_address: The DMA (bus) address of pages (if
+	 * TTM_PAGE_FLAG_DMA32 is set).
+	 * @dev: The device that needs this (optional if DMA32 is not set)
+	 */
+	void (*put_pages)(struct list_head *pages,
+			  unsigned page_count,
+			  int flags,
+			  enum ttm_caching_state cstate,
+			  dma_addr_t *dma_address,
+			  struct device *dev);
+	/**
+	 * struct ttm_page_alloc_func member alloc_init.
+	 *
+	 * Initialize pool allocator.
+	 */
+	int (*alloc_init)(struct ttm_mem_global *glob, unsigned max_pages);
+
+	/**
+	 * struct ttm_page_alloc_func member alloc_fini.
+	 *
+	 * Free pool allocator.
+	 */
+	void (*alloc_fini)(void);
+
+	/**
+	 * struct ttm_page_alloc_func member debugfs.
+	 *
+	 * Output the state of pools to debugfs file
+	 */
+	int (*debugfs)(struct seq_file *m, void *data);
+};
+
+extern struct ttm_page_alloc_func *ttm_page_alloc;
+
+/* Defined in ttm_page_alloc.c */
+extern struct ttm_page_alloc_func ttm_page_alloc_default;
+
+#ifdef CONFIG_SWIOTLB
+/* Defined in ttm_page_alloc_dma.c */
+extern struct ttm_page_alloc_func ttm_page_alloc_dma;
+extern bool dma_ttm_disable;
+static inline bool ttm_page_alloc_need_dma(void)
+{
+	if (!dma_ttm_disable && swiotlb_enabled()) {
+		ttm_page_alloc = &ttm_page_alloc_dma;
+		return true;
+	}
+	return false;
+}
+#else
+static inline bool ttm_page_alloc_need_dma(void) { return false; }
+#endif
 /**
  * Get count number of pages from pool to pages list.
  *
@@ -37,12 +123,14 @@
  * @cstate: ttm caching state for the page.
  * @count: number of pages to allocate.
  * @dma_address: The DMA (bus) address of pages (if TTM_PAGE_FLAG_DMA32 set).
+ * @dev: struct device for appropiate DMA accounting.
  */
 int ttm_get_pages(struct list_head *pages,
 		  int flags,
 		  enum ttm_caching_state cstate,
 		  unsigned count,
-		  dma_addr_t *dma_address);
+		  dma_addr_t *dma_address,
+		  struct device *dev);
 /**
  * Put linked list of pages to pool.
  *
@@ -52,12 +140,14 @@ int ttm_get_pages(struct list_head *pages,
  * @flags: ttm flags for page allocation.
  * @cstate: ttm caching state.
  * @dma_address: The DMA (bus) address of pages (if TTM_PAGE_FLAG_DMA32 set).
+ * @dev: struct device for appropiate DMA accounting.
  */
 void ttm_put_pages(struct list_head *pages,
 		   unsigned page_count,
 		   int flags,
 		   enum ttm_caching_state cstate,
-		   dma_addr_t *dma_address);
+		   dma_addr_t *dma_address,
+		   struct device *dev);
 /**
  * Initialize pool allocator.
  */
