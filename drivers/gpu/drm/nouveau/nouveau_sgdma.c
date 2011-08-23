@@ -42,7 +42,7 @@ nouveau_sgdma_populate(struct ttm_backend *be, unsigned long num_pages,
 
 	nvbe->nr_pages = 0;
 	while (num_pages--) {
-		if (!pci_dma_mapping_error(dev->pdev, dma_addrs[nvbe->nr_pages])) {
+		if (dev->pdev, dma_addrs[nvbe->nr_pages] != 0) {
 			nvbe->pages[nvbe->nr_pages] =
 					dma_addrs[nvbe->nr_pages];
 		 	nvbe->ttm_alloced[nvbe->nr_pages] = true;

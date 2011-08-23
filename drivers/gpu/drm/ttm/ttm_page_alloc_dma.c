@@ -57,6 +57,10 @@ int __read_mostly dma_ttm_disable;
 MODULE_PARM_DESC(no_dma, "Disable TTM DMA pool");
 module_param_named(no_dma, dma_ttm_disable, bool, S_IRUGO);
 
+int __read_mostly dma_ttm_for_all;
+MODULE_PARM_DESC(dma_all, "Enable DMA API even for 64-bit cards");
+module_param_named(dma_all, dma_ttm_for_all, bool, S_IRUGO);
+
 #define NUM_PAGES_TO_ALLOC		(PAGE_SIZE/sizeof(struct page *))
 #define SMALL_ALLOCATION		16
 #define FREE_ALL_PAGES			(~0U)
@@ -130,22 +134,6 @@ struct dma_page {
 	void *vaddr;
 	dma_addr_t dma;
 	unsigned int in_use:1;
-};
-
-/*
- * To be used if the 'struct device' has not been passed in.
- */
-static void fallback_release(struct device *dev)
-{
-}
-static struct bus_type fallback_bus_type = {
-	.name = "ttm:",
-};
-static struct device fallback = {
-	.init_name = "ttm_fallback",
-	.coherent_dma_mask = DMA_BIT_MASK(64),
-	.bus = &fallback_bus_type,
-	.release = fallback_release,
 };
 
 /*
@@ -354,7 +342,7 @@ static void __ttm_dma_free_page(struct dma_pool *pool, struct dma_page *d_page)
 		pool->dev_name, pool->name, current->pid, d_page->vaddr,
 		virt_to_page(d_page->vaddr), (unsigned long)dma);
 
-	if (pool->type & IS_DMA32) {
+	if (pool->type & IS_DMA32 || dma_ttm_for_all) {
 		dma_free_coherent(pool->dev, pool->size, d_page->vaddr, dma);
 	} else {
 		struct page *p = virt_to_page(d_page->vaddr);
@@ -372,16 +360,19 @@ static struct dma_page *__ttm_dma_alloc_page(struct dma_pool *pool)
 	if (!d_page)
 		return NULL;
 
-	if (pool->type & IS_DMA32) {
+	if (pool->type & IS_DMA32 || dma_ttm_for_all) {
 		d_page->vaddr = dma_alloc_coherent(pool->dev, pool->size,
 						   &d_page->dma,
 						   pool->gfp_flags);
 	} else {
 		struct page *p = alloc_page(pool->gfp_flags);
-		if (p) {
+
+		/* Force the consumers of the TTM to do manual pci_map_..
+		 * operation. */
+		d_page->dma = 0;
+		if (p)
 			d_page->vaddr = page_address(p);
-			d_page->dma = -1;
-		} else
+		else
 			d_page->vaddr = 0;
 	}
 
@@ -558,6 +549,9 @@ static void ttm_dma_free_pool(struct device *dev, enum pool_type type)
 	struct dma_pool *pool;
 	struct dma_page *d_page, *d_tmp;
 
+	if (!dev)
+		return;
+
 	mutex_lock(&_manager->lock);
 	list_for_each_entry_reverse(p, &_manager->pools, pools) {
 		if (p->dev != dev)
@@ -702,10 +696,6 @@ static struct dma_pool *ttm_dma_find_pool(struct device *dev,
 {
 	struct dma_pool *pool, *tmp, *found = NULL;
 
-	/* If user did not pass in 'dev' we will use the fallback one
-	 * (which cannot be used for DMA32) */
-	if (!dev)
-		dev = &fallback;
 	/* NB: We iterate on the 'struct dev' which has no spinlock, but
 	 * it does have a kref which we have taken. */
 	list_for_each_entry_safe(pool, tmp, &dev->dma_pools, pools) {
@@ -1064,11 +1054,9 @@ static int ttm_dma_get_pages(struct list_head *pages, int flags,
 
 	type = ttm_to_type(flags, cstate);
 
-	if (flags & TTM_PAGE_FLAG_DMA32) {
-		if (WARN(!dev, "Cannot use NULL device with DMA32!"))
-			return -ENOMEM;
+	if (flags & TTM_PAGE_FLAG_DMA32)
 		gfp_flags = GFP_USER | GFP_DMA32;
-	} else
+	else
 		gfp_flags = GFP_HIGHUSER;
 
 	if (flags & TTM_PAGE_FLAG_ZERO_ALLOC)
@@ -1142,7 +1130,7 @@ static void ttm_dma_put_pages(struct list_head *pages, unsigned page_count,
 		WARN_ON(!pool);
 		return;
 	}
-	is_cached = (ttm_dma_find_pool(dev,
+	is_cached = (ttm_dma_find_pool(pool->dev,
 				       ttm_to_type(flags, tt_cached)) == pool);
 
 	dev_dbg(pool->dev, "(%s:%d) %s %d pages.\n", pool->name, current->pid,
@@ -1246,35 +1234,12 @@ static int ttm_dma_page_alloc_init(struct ttm_mem_global *glob,
 
 	mutex_init(&_manager->lock);
 	INIT_LIST_HEAD(&_manager->pools);
-	/* The fake device is only neccessary for us to use the
-	 * dev->dma_pool, and for locking.
-	 */
-	ret = bus_register(&fallback_bus_type);
-	if (ret) {
-		kfree(_manager);
-		goto err_manager;
-	}
-	fallback.dma_mask = &fallback.coherent_dma_mask;
-	ret = device_register(&fallback);
-	if (ret) {
-		put_device(&fallback);
-		goto err;
-	}
-	/* Allocate three pools for fallback device. */
-	if (IS_ERR_OR_NULL(ttm_dma_pool_init(&fallback, GFP_HIGHUSER, IS_WC)))
-		goto err;
-	if (IS_ERR_OR_NULL(ttm_dma_pool_init(&fallback, GFP_HIGHUSER, IS_UC)))
-		goto err;
-	if (IS_ERR_OR_NULL(ttm_dma_pool_init(&fallback, GFP_HIGHUSER,
-			   IS_CACHED)))
-		goto err;
-
-	/* We don't allocate DMA32 for the fallback device as it does
-	 * not need to use the DMA API (it can do 64-bit DMA). */
 
 	_manager->options.max_size = max_pages;
 	_manager->options.small = SMALL_ALLOCATION;
 	_manager->options.alloc_size = NUM_PAGES_TO_ALLOC;
+
+	/* This takes care of auto-freeing the _manager */
 	ret = kobject_init_and_add(&_manager->kobj, &ttm_pool_kobj_type,
 				   &glob->kobj, "pool");
 	if (unlikely(ret != 0)) {
@@ -1284,14 +1249,10 @@ static int ttm_dma_page_alloc_init(struct ttm_mem_global *glob,
 	ttm_pool_mm_shrink_init(_manager);
 
 	return 0;
-err:
-	ttm_dma_free_pool(&fallback, IS_CACHED);
-	ttm_dma_free_pool(&fallback, IS_UC);
-	ttm_dma_free_pool(&fallback, IS_WC);
-	device_unregister(&fallback);
-	bus_unregister(&fallback_bus_type);
-	_manager = NULL;
 err_manager:
+	kfree(_manager);
+	_manager = NULL;
+err:
 	return ret;
 }
 static void ttm_dma_page_alloc_fini(void)
@@ -1309,10 +1270,7 @@ static void ttm_dma_page_alloc_fini(void)
 			ttm_dma_pool_match, p->pool));
 		ttm_dma_free_pool(p->dev, p->pool->type);
 	}
-
 	kobject_put(&_manager->kobj);
-	device_unregister(&fallback);
-	bus_unregister(&fallback_bus_type);
 	_manager = NULL;
 }
 
