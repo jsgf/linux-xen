@@ -397,6 +397,8 @@ int ttm_mem_global_init(struct ttm_mem_global *glob)
 		       zone->name, (unsigned long long) zone->max_mem >> 10);
 	}
 	ttm_page_alloc = &ttm_page_alloc_default;
+	if (ttm_page_alloc_need_dma())
+		printk(KERN_INFO TTM_PFX "Using DMA aware pool.\n");
 	ttm_page_alloc_init(glob, glob->zone_kernel->max_mem/(2*PAGE_SIZE));
 	return 0;
 out_no_zone:
