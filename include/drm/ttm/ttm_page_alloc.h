@@ -29,6 +29,11 @@
 #include "ttm_bo_driver.h"
 #include "ttm_memory.h"
 
+#ifdef CONFIG_SWIOTLB
+#include <linux/dma-mapping.h>
+#include <linux/swiotlb.h>
+#endif
+
 struct ttm_page_alloc_func {
 	/**
 	 * struct ttm_page_alloc_func member get_pages
@@ -38,7 +43,8 @@ struct ttm_page_alloc_func {
 	 * @flags: ttm flags for page allocation.
 	 * @cstate: ttm caching state for the page.
 	 * @count: number of pages to allocate.
-	 * @dma_address: The DMA (bus) address of pages (by default zero).
+	 * @dma_address: The DMA (bus) address of pages (if
+	 * TTM DMA pool is used - otherwise it is zero).
 	 * @dev: The device that needs this.
 	 */
 	int (*get_pages) (struct list_head *pages,
@@ -57,7 +63,8 @@ struct ttm_page_alloc_func {
 	 * unknown count.
 	 * @flags: ttm flags for page allocation.
 	 * @cstate: ttm caching state.
-	 * @dma_address: The DMA (bus) address of pages (by default zero).
+	 * @dma_address: The DMA (bus) address of pages (if
+	 * TTM DMA pool is used - otherwise it is zero).
 	 * @dev: The device that needs this.
 	 */
 	void (*put_pages)(struct list_head *pages,
@@ -93,6 +100,21 @@ extern struct ttm_page_alloc_func *ttm_page_alloc;
 /* Defined in ttm_page_alloc.c */
 extern struct ttm_page_alloc_func ttm_page_alloc_default;
 
+#ifdef CONFIG_SWIOTLB
+/* Defined in ttm_page_alloc_dma.c */
+extern struct ttm_page_alloc_func ttm_page_alloc_dma;
+
+static inline bool ttm_page_alloc_need_dma(void)
+{
+	if (swiotlb_enabled()) {
+		ttm_page_alloc = &ttm_page_alloc_dma;
+		return true;
+	}
+	return false;
+}
+#else
+static inline bool ttm_page_alloc_need_dma(void) { return false; }
+#endif
 /**
  * Get count number of pages from pool to pages list.
  *
@@ -100,7 +122,8 @@ extern struct ttm_page_alloc_func ttm_page_alloc_default;
  * @flags: ttm flags for page allocation.
  * @cstate: ttm caching state for the page.
  * @count: number of pages to allocate.
- * @dma_address: The DMA (bus) address of pages - (by default zero).
+ * @dma_address: The DMA (bus) address of pages (if TTM DMA pool is used -
+ *  otherwise the value is zero).
  * @dev: The device that needs this.
  */
 int ttm_get_pages(struct list_head *pages,
@@ -117,7 +140,8 @@ int ttm_get_pages(struct list_head *pages,
  * count.
  * @flags: ttm flags for page allocation.
  * @cstate: ttm caching state.
- * @dma_address: The DMA (bus) address of pages (by default zero).
+ * @dma_address: The DMA (bus) address of pages (if TTM DMA pool is used -
+ *  otherwise the value is zero).
  * @dev: The device that needs this.
  */
 void ttm_put_pages(struct list_head *pages,
