@@ -33,8 +33,6 @@
  *   when freed).
  */
 
-#define DEBUG 1
-
 #include <linux/dma-mapping.h>
 #include <linux/list.h>
 #include <linux/seq_file.h> /* for seq_printf */
@@ -56,10 +54,6 @@
 int __read_mostly dma_ttm_disable;
 MODULE_PARM_DESC(no_dma, "Disable TTM DMA pool");
 module_param_named(no_dma, dma_ttm_disable, bool, S_IRUGO);
-
-int __read_mostly dma_ttm_for_all;
-MODULE_PARM_DESC(dma_all, "Enable DMA API even for 64-bit cards");
-module_param_named(dma_all, dma_ttm_for_all, bool, S_IRUGO);
 
 #define NUM_PAGES_TO_ALLOC		(PAGE_SIZE/sizeof(struct page *))
 #define SMALL_ALLOCATION		16
@@ -342,12 +336,7 @@ static void __ttm_dma_free_page(struct dma_pool *pool, struct dma_page *d_page)
 		pool->dev_name, pool->name, current->pid, d_page->vaddr,
 		virt_to_page(d_page->vaddr), (unsigned long)dma);
 
-	if (pool->type & IS_DMA32 || dma_ttm_for_all) {
-		dma_free_coherent(pool->dev, pool->size, d_page->vaddr, dma);
-	} else {
-		struct page *p = virt_to_page(d_page->vaddr);
-		__free_page(p);
-	}
+	dma_free_coherent(pool->dev, pool->size, d_page->vaddr, dma);
 
 	kfree(d_page);
 	d_page = NULL;
@@ -360,22 +349,9 @@ static struct dma_page *__ttm_dma_alloc_page(struct dma_pool *pool)
 	if (!d_page)
 		return NULL;
 
-	if (pool->type & IS_DMA32 || dma_ttm_for_all) {
-		d_page->vaddr = dma_alloc_coherent(pool->dev, pool->size,
-						   &d_page->dma,
-						   pool->gfp_flags);
-	} else {
-		struct page *p = alloc_page(pool->gfp_flags);
-
-		/* Force the consumers of the TTM to do manual pci_map_..
-		 * operation. */
-		d_page->dma = 0;
-		if (p)
-			d_page->vaddr = page_address(p);
-		else
-			d_page->vaddr = 0;
-	}
-
+	d_page->vaddr = dma_alloc_coherent(pool->dev, pool->size,
+					   &d_page->dma,
+					   pool->gfp_flags);
 	if (d_page->vaddr) {
 		pr_debug("%s: (%s:%d) Allocated %p (%p) (DMA:0x%lx)\n",
 			pool->dev_name, pool->name, current->pid, d_page->vaddr,
