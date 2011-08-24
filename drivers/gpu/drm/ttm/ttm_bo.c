@@ -1527,12 +1527,14 @@ int ttm_bo_device_init(struct ttm_bo_device *bdev,
 		       struct ttm_bo_global *glob,
 		       struct ttm_bo_driver *driver,
 		       uint64_t file_page_offset,
-		       bool need_dma32)
+		       bool need_dma32,
+		       struct device *dev)
 {
 	int ret = -EINVAL;
 
 	rwlock_init(&bdev->vm_lock);
 	bdev->driver = driver;
+	bdev->dev = dev;
 
 	memset(bdev->man, 0, sizeof(bdev->man));
 
