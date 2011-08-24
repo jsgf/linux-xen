@@ -417,7 +417,8 @@ nouveau_mem_vram_init(struct drm_device *dev)
 	ret = ttm_bo_device_init(&dev_priv->ttm.bdev,
 				 dev_priv->ttm.bo_global_ref.ref.object,
 				 &nouveau_bo_driver, DRM_FILE_PAGE_OFFSET,
-				 dma_bits <= 32 ? true : false);
+				 dma_bits <= 32 ? true : false,
+				 dev->dev);
 	if (ret) {
 		NV_ERROR(dev, "Error initialising bo driver: %d\n", ret);
 		return ret;
