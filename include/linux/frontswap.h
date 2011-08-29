@@ -24,34 +24,67 @@ extern int __frontswap_get_page(struct page *page);
 extern void __frontswap_flush_page(unsigned, pgoff_t);
 extern void __frontswap_flush_area(unsigned);
 
-#ifndef CONFIG_FRONTSWAP
-/* all inline routines become no-ops and all externs are ignored */
-#define frontswap_enabled (0)
-#endif
+#ifdef CONFIG_FRONTSWAP
 
 static inline int frontswap_test(struct swap_info_struct *sis, pgoff_t offset)
 {
 	int ret = 0;
 
 	if (frontswap_enabled && sis->frontswap_map)
-		ret = test_bit(offset % BITS_PER_LONG,
-			&sis->frontswap_map[offset/BITS_PER_LONG]);
+		ret = test_bit(offset, sis->frontswap_map);
 	return ret;
 }
 
 static inline void frontswap_set(struct swap_info_struct *sis, pgoff_t offset)
 {
 	if (frontswap_enabled && sis->frontswap_map)
-		set_bit(offset % BITS_PER_LONG,
-			&sis->frontswap_map[offset/BITS_PER_LONG]);
+		set_bit(offset, sis->frontswap_map);
 }
 
 static inline void frontswap_clear(struct swap_info_struct *sis, pgoff_t offset)
 {
 	if (frontswap_enabled && sis->frontswap_map)
-		clear_bit(offset % BITS_PER_LONG,
-			&sis->frontswap_map[offset/BITS_PER_LONG]);
+		clear_bit(offset, sis->frontswap_map);
 }
+
+static inline void frontswap_map_set(struct swap_info_struct *p,
+				     unsigned long *map)
+{
+	p->frontswap_map = map;
+}
+
+static inline unsigned long *frontswap_map_get(struct swap_info_struct *p)
+{
+	return p->frontswap_map;
+}
+#else
+/* all inline routines become no-ops and all externs are ignored */
+
+#define frontswap_enabled (0)
+
+static inline int frontswap_test(struct swap_info_struct *sis, pgoff_t offset)
+{
+	return 0;
+}
+
+static inline void frontswap_set(struct swap_info_struct *sis, pgoff_t offset)
+{
+}
+
+static inline void frontswap_clear(struct swap_info_struct *sis, pgoff_t offset)
+{
+}
+
+static inline void frontswap_map_set(struct swap_info_struct *p,
+				     unsigned long *map)
+{
+}
+
+static inline unsigned long *frontswap_map_get(struct swap_info_struct *p)
+{
+	return NULL;
+}
+#endif
 
 static inline int frontswap_put_page(struct page *page)
 {
