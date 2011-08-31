@@ -51,7 +51,7 @@ EXPORT_SYMBOL_GPL(unregister_xen_pcpu_notifier);
 static int xen_pcpu_down(uint32_t xen_id)
 {
 	int ret;
-	xen_platform_op_t op = {
+	struct xen_platform_op op = {
 		.cmd			= XENPF_cpu_offline,
 		.interface_version	= XENPF_INTERFACE_VERSION,
 		.u.cpu_ol.cpuid	= xen_id,
@@ -64,7 +64,7 @@ static int xen_pcpu_down(uint32_t xen_id)
 static int xen_pcpu_up(uint32_t xen_id)
 {
 	int ret;
-	xen_platform_op_t op = {
+	struct xen_platform_op op = {
 		.cmd			= XENPF_cpu_online,
 		.interface_version	= XENPF_INTERFACE_VERSION,
 		.u.cpu_ol.cpuid	= xen_id,
@@ -253,7 +253,7 @@ static struct pcpu *_sync_pcpu(int cpu_num, int *max_id, int *result)
 {
 	struct pcpu *pcpu = NULL;
 	struct xenpf_pcpuinfo *info;
-	xen_platform_op_t op = {
+	struct xen_platform_op op = {
 		.cmd            = XENPF_get_cpuinfo,
 		.interface_version  = XENPF_INTERFACE_VERSION,
 	};
@@ -316,7 +316,7 @@ static struct pcpu *_sync_pcpu(int cpu_num, int *max_id, int *result)
 int xen_pcpu_index(uint32_t id, int is_acpiid)
 {
 	int cpu_num = 0, max_id = 0, ret;
-	xen_platform_op_t op = {
+	struct xen_platform_op op = {
 		.cmd            = XENPF_get_cpuinfo,
 		.interface_version  = XENPF_INTERFACE_VERSION,
 	};

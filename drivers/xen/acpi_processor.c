@@ -188,7 +188,7 @@ static inline void xen_convert_psd_pack(struct xen_psd_package *xpsd,
 static int xen_cx_notifier(struct acpi_processor *pr, int action)
 {
 	int ret, count = 0, i;
-	xen_platform_op_t op = {
+	struct xen_platform_op op = {
 		.cmd			= XENPF_set_processor_pminfo,
 		.interface_version	= XENPF_INTERFACE_VERSION,
 		.u.set_pminfo.id	= pr->acpi_id,
@@ -261,7 +261,7 @@ static int xen_cx_notifier(struct acpi_processor *pr, int action)
 static int xen_px_notifier(struct acpi_processor *pr, int action)
 {
 	int ret = -EINVAL;
-	xen_platform_op_t op = {
+	struct xen_platform_op op = {
 		.cmd			= XENPF_set_processor_pminfo,
 		.interface_version	= XENPF_INTERFACE_VERSION,
 		.u.set_pminfo.id	= pr->acpi_id,
@@ -305,7 +305,7 @@ static int xen_px_notifier(struct acpi_processor *pr, int action)
 
 		/* pss */
 		perf->state_count = px->state_count;
-		states = kzalloc(px->state_count*sizeof(xen_processor_px_t),
+		states = kzalloc(px->state_count*sizeof(struct xen_processor_px),
 				GFP_KERNEL);
 		if (!states)
 			return -ENOMEM;
@@ -351,7 +351,7 @@ static int xen_hotplug_notifier(struct acpi_processor *pr, int event)
 	unsigned long long pxm;
 	acpi_status status = 0;
 
-	xen_platform_op_t op = {
+	struct xen_platform_op op = {
 		.interface_version  = XENPF_INTERFACE_VERSION,
 	};
 
