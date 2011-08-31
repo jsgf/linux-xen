@@ -42,7 +42,7 @@
 #include <asm/setup.h>
 #include <asm/e820.h>
 #include <asm/io.h>
-
+#include <linux/acpi.h>
 #include "acpi/realmode/wakeup.h"
 
 /* Global pointer to shared data; NULL means no measured launch. */
@@ -281,7 +281,7 @@ int tboot_sleep(u8 sleep_state, u32 pm1a_control, u32 pm1b_control,
 		/* S5: */ TB_SHUTDOWN_S5 };
 
 	if (!tboot_enabled())
-		return return_ACPI_STATUS(AE_OK);
+		return AE_OK;
 
 	tboot_copy_fadt(&acpi_gbl_FADT);
 	tboot->acpi_sinfo.pm1a_cnt_val = pm1a_control;
@@ -292,12 +292,12 @@ int tboot_sleep(u8 sleep_state, u32 pm1a_control, u32 pm1b_control,
 	if (sleep_state >= ACPI_S_STATE_COUNT ||
 	    acpi_shutdown_map[sleep_state] == -1) {
 		pr_warning("unsupported sleep state 0x%x\n", sleep_state);
-		return_ACPI_STATUS(AE_ERROR);
+		return AE_ERROR;
 	}
 
 	tboot_shutdown(acpi_shutdown_map[sleep_state]);
 
-	return return_ACPI_STATUS(AE_OK);
+	return AE_OK;
 }
 
 static atomic_t ap_wfs_count;
