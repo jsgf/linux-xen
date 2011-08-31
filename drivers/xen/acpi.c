@@ -1,11 +1,12 @@
 #include <xen/acpi.h>
-
+#include <asm/acpi.h>
 #include <xen/interface/platform.h>
 #include <asm/xen/hypercall.h>
 #include <asm/xen/hypervisor.h>
 
-int acpi_notify_hypervisor_state(u8 sleep_state,
-				 u32 pm1a_cnt, u32 pm1b_cnt)
+int xen_acpi_notify_hypervisor_state(u8 sleep_state,
+				     u32 pm1a_cnt, u32 pm1b_cnt,
+				     bool *skip_rest)
 {
 	struct xen_platform_op op = {
 		.cmd = XENPF_enter_acpi_sleep,
@@ -18,6 +19,8 @@ int acpi_notify_hypervisor_state(u8 sleep_state,
 			},
 		},
 	};
+	if (skip_rest)
+		*skip_rest = true;
 
 	return HYPERVISOR_dom0_op(&op);
 }
