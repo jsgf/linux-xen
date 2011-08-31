@@ -348,15 +348,12 @@ acpi_status asmlinkage acpi_enter_sleep_state(u8 sleep_state)
 		status = __acpi_override_sleep(sleep_state, pm1a_control,
 					       pm1b_control, &skip_rest);
 
-		if (ACPI_FAILURE(status)) {
+		if (ACPI_FAILURE(status))
 			return_ACPI_STATUS(status);
-		}
-
-		if (skip_rest) {
+		if (skip_rest)
 			return_ACPI_STATUS(AE_OK);
-		}
-
 	}
+	/* Write #2: Write both SLP_TYP + SLP_EN */
 
 	status = acpi_hw_write_pm1_control(pm1a_control, pm1b_control);
 	if (ACPI_FAILURE(status)) {

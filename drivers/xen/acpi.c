@@ -1,5 +1,4 @@
 #include <xen/acpi.h>
-#include <asm/acpi.h>
 #include <xen/interface/platform.h>
 #include <asm/xen/hypercall.h>
 #include <asm/xen/hypervisor.h>

@@ -315,7 +315,6 @@ static void xen_initdom_restore_msi_irqs(struct pci_dev *dev, int irq)
 	ret = HYPERVISOR_physdev_op(PHYSDEVOP_restore_msi, &restore);
 	WARN(ret && ret != -ENOSYS, "restore_msi -> %d\n", ret);
 }
-
 #endif
 
 static void xen_teardown_msi_irqs(struct pci_dev *dev)

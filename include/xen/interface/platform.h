@@ -37,12 +37,11 @@
  */
 #define XENPF_settime             17
 struct xenpf_settime {
-    /* IN variables. */
-    uint32_t secs;
-    uint32_t nsecs;
-    uint64_t system_time;
+	/* IN variables. */
+	uint32_t secs;
+	uint32_t nsecs;
+	uint64_t system_time;
 };
-typedef struct xenpf_settime xenpf_settime_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_settime_t);
 
 /*
@@ -54,15 +53,14 @@ DEFINE_GUEST_HANDLE_STRUCT(xenpf_settime_t);
  */
 #define XENPF_add_memtype         31
 struct xenpf_add_memtype {
-    /* IN variables. */
-    unsigned long mfn;
-    uint64_t nr_mfns;
-    uint32_t type;
-    /* OUT variables. */
-    uint32_t handle;
-    uint32_t reg;
+	/* IN variables. */
+	unsigned long mfn;
+	uint64_t nr_mfns;
+	uint32_t type;
+	/* OUT variables. */
+	uint32_t handle;
+	uint32_t reg;
 };
-typedef struct xenpf_add_memtype xenpf_add_memtype_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_add_memtype_t);
 
 /*
@@ -74,33 +72,30 @@ DEFINE_GUEST_HANDLE_STRUCT(xenpf_add_memtype_t);
  */
 #define XENPF_del_memtype         32
 struct xenpf_del_memtype {
-    /* IN variables. */
-    uint32_t handle;
-    uint32_t reg;
+	/* IN variables. */
+	uint32_t handle;
+	uint32_t reg;
 };
-typedef struct xenpf_del_memtype xenpf_del_memtype_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_del_memtype_t);
 
 /* Read current type of an MTRR (x86-specific). */
 #define XENPF_read_memtype        33
 struct xenpf_read_memtype {
-    /* IN variables. */
-    uint32_t reg;
-    /* OUT variables. */
-    unsigned long mfn;
-    uint64_t nr_mfns;
-    uint32_t type;
+	/* IN variables. */
+	uint32_t reg;
+	/* OUT variables. */
+	unsigned long mfn;
+	uint64_t nr_mfns;
+	uint32_t type;
 };
-typedef struct xenpf_read_memtype xenpf_read_memtype_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_read_memtype_t);
 
 #define XENPF_microcode_update    35
 struct xenpf_microcode_update {
-    /* IN variables. */
-    GUEST_HANDLE(void) data;          /* Pointer to microcode data */
-    uint32_t length;                  /* Length of microcode data. */
+	/* IN variables. */
+	GUEST_HANDLE(void) data;          /* Pointer to microcode data */
+	uint32_t length;                  /* Length of microcode data. */
 };
-typedef struct xenpf_microcode_update xenpf_microcode_update_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_microcode_update_t);
 
 #define XENPF_platform_quirk      39
@@ -108,10 +103,9 @@ DEFINE_GUEST_HANDLE_STRUCT(xenpf_microcode_update_t);
 #define QUIRK_IOAPIC_BAD_REGSEL   2 /* IO-APIC REGSEL forgets its value    */
 #define QUIRK_IOAPIC_GOOD_REGSEL  3 /* IO-APIC REGSEL behaves properly     */
 struct xenpf_platform_quirk {
-    /* IN variables. */
-    uint32_t quirk_id;
+	/* IN variables. */
+	uint32_t quirk_id;
 };
-typedef struct xenpf_platform_quirk xenpf_platform_quirk_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_platform_quirk_t);
 
 #define XENPF_firmware_info       50
@@ -150,7 +144,6 @@ struct xenpf_firmware_info {
 		} vbeddc_info; /* XEN_FW_VBEDDC_INFO */
 	} u;
 };
-typedef struct xenpf_firmware_info xenpf_firmware_info_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_firmware_info_t);
 
 #define XENPF_enter_acpi_sleep    51
@@ -161,7 +154,6 @@ struct xenpf_enter_acpi_sleep {
 	uint32_t sleep_state;       /* Which state to enter (Sn). */
 	uint32_t flags;             /* Must be zero. */
 };
-typedef struct xenpf_enter_acpi_sleep xenpf_enter_acpi_sleep_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_enter_acpi_sleep_t);
 
 #define XENPF_change_freq         52
@@ -171,7 +163,6 @@ struct xenpf_change_freq {
 	uint32_t cpu;   /* Physical cpu. */
 	uint64_t freq;  /* New frequency (Hz). */
 };
-typedef struct xenpf_change_freq xenpf_change_freq_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_change_freq_t);
 
 /*
@@ -196,7 +187,6 @@ struct xenpf_getidletime {
 	/* System time when the idletime snapshots were taken. */
 	uint64_t now;
 };
-typedef struct xenpf_getidletime xenpf_getidletime_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_getidletime_t);
 
 #define XENPF_set_processor_pminfo      54
@@ -230,7 +220,6 @@ struct xen_processor_csd {
 	uint32_t    coord_type;  /* coordination type */
 	uint32_t    num;         /* number of processors in same domain */
 };
-typedef struct xen_processor_csd xen_processor_csd_t;
 DEFINE_GUEST_HANDLE_STRUCT(xen_processor_csd);
 
 struct xen_processor_cx {
@@ -241,7 +230,6 @@ struct xen_processor_cx {
 	uint32_t    dpcnt;    /* number of dependency entries */
 	GUEST_HANDLE(xen_processor_csd) dp; /* NULL if no dependency */
 };
-typedef struct xen_processor_cx xen_processor_cx_t;
 DEFINE_GUEST_HANDLE_STRUCT(xen_processor_cx);
 
 struct xen_processor_flags {
@@ -276,7 +264,6 @@ struct xen_processor_px {
 	uint64_t control;        /* control value */
 	uint64_t status;     /* success indicator */
 };
-typedef struct xen_processor_px xen_processor_px_t;
 DEFINE_GUEST_HANDLE_STRUCT(xen_processor_px);
 
 struct xen_psd_package {
@@ -297,7 +284,6 @@ struct xen_processor_performance {
 	struct xen_psd_package domain_info;
 	uint32_t shared_type;     /* coordination type of this processor */
 };
-typedef struct xen_processor_performance xen_processor_performance_t;
 DEFINE_GUEST_HANDLE_STRUCT(xen_processor_performance);
 
 struct xenpf_set_processor_pminfo {
@@ -309,7 +295,6 @@ struct xenpf_set_processor_pminfo {
 		struct xen_processor_performance    perf; /* Px: _PPC/_PCT/_PSS/_PSD */
 	};
 };
-typedef struct xenpf_set_processor_pminfo xenpf_set_processor_pminfo_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_set_processor_pminfo);
 
 #define XENPF_get_cpuinfo 55
@@ -365,7 +350,6 @@ struct xen_platform_op {
 		uint8_t                        pad[128];
 	} u;
 };
-typedef struct xen_platform_op xen_platform_op_t;
 DEFINE_GUEST_HANDLE_STRUCT(xen_platform_op_t);
 
 #endif /* __XEN_PUBLIC_PLATFORM_H__ */

@@ -9,7 +9,6 @@
 #ifdef CONFIG_XEN_DOM0
 #include <asm/xen/hypervisor.h>
 #include <xen/xen.h>
-#include <asm/acpi.h>
 #include <linux/acpi.h>
 
 int xen_acpi_notify_hypervisor_state(u8 sleep_state,
@@ -18,7 +17,7 @@ int xen_acpi_notify_hypervisor_state(u8 sleep_state,
 
 static inline int xen_acpi_suspend_lowlevel(void)
 {
-/*
+	/*
 	 * Xen will save and restore CPU context, so
 	 * we can skip that and just go straight to
 	 * the suspend.

@@ -150,7 +150,7 @@ struct physdev_restore_msi {
 	uint8_t bus;
 	uint8_t devfn;
 };
-typedef struct physdev_restore_msi physdev_restore_msi_t;
+
 
 #define PHYSDEVOP_manage_pci_add_ext	20
 struct physdev_manage_pci_ext {
