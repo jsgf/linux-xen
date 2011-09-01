@@ -603,7 +603,7 @@ static int dispatch_rw_block_io(struct xen_blkif *blkif,
 		break;
 	case BLKIF_OP_FLUSH_DISKCACHE:
 		blkif->st_f_req++;
-		operation = WRITE_FLUSH;
+		operation = WRITE_FLUSH_FUA;
 		break;
 	case BLKIF_OP_DISCARD:
 		blkif->st_ds_req++;
@@ -618,7 +618,7 @@ static int dispatch_rw_block_io(struct xen_blkif *blkif,
 
 	/* Check that the number of segments is sane. */
 	nseg = req->nr_segments;
-	if (unlikely(nseg == 0 && operation != WRITE_FLUSH &&
+	if (unlikely(nseg == 0 && operation != WRITE_FLUSH_FUA &&
 				operation != REQ_DISCARD) ||
 	    unlikely(nseg > BLKIF_MAX_SEGMENTS_PER_REQUEST)) {
 		pr_debug(DRV_PFX "Bad number of segments in request (%d)\n",
@@ -707,9 +707,10 @@ static int dispatch_rw_block_io(struct xen_blkif *blkif,
 
 	/* This will be hit if the operation was a flush or discard. */
 	if (!bio) {
-		BUG_ON(operation != WRITE_FLUSH && operation != REQ_DISCARD);
+		BUG_ON(operation != WRITE_FLUSH_FUA &&
+		       operation != REQ_DISCARD);
 
-		if (operation == WRITE_FLUSH) {
+		if (operation == WRITE_FLUSH_FUA) {
 			bio = bio_alloc(GFP_KERNEL, 0);
 			if (unlikely(bio == NULL))
 				goto fail_put_bio;
@@ -743,7 +744,7 @@ static int dispatch_rw_block_io(struct xen_blkif *blkif,
 
 	if (operation == READ)
 		blkif->st_rd_sect += preq.nr_sects;
-	else if (operation == WRITE || operation == WRITE_FLUSH)
+	else if (operation == WRITE || operation == WRITE_FLUSH_FUA)
 		blkif->st_wr_sect += preq.nr_sects;
 
 	return 0;

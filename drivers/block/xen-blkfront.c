@@ -1220,10 +1220,9 @@ static void blkfront_connect(struct blkfront_info *info)
 	 *
 	 * If there are barriers, then we use flush.
 	 */
-	if (!err && barrier) {
-		info->feature_flush = REQ_FLUSH | REQ_FUA;
+	if (!err && barrier)
 		info->flush_op = BLKIF_OP_WRITE_BARRIER;
-	}
+
 	/*
 	 * And if there is "feature-flush-cache" use that above
 	 * barriers.
@@ -1232,10 +1231,11 @@ static void blkfront_connect(struct blkfront_info *info)
 			    "feature-flush-cache", "%d", &flush,
 			    NULL);
 
-	if (!err && flush) {
-		info->feature_flush = REQ_FLUSH;
+	if (!err && flush)
 		info->flush_op = BLKIF_OP_FLUSH_DISKCACHE;
-	}
+
+	if (info->flush_op)
+		info->feature_flush = REQ_FLUSH | REQ_FUA;
 
 	err = xenbus_gather(XBT_NIL, info->xbdev->otherend,
 			    "feature-discard", "%d", &discard,
