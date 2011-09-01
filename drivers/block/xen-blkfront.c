@@ -1206,7 +1206,7 @@ static void blkfront_connect(struct blkfront_info *info)
 		return;
 	}
 
-	info->feature_flush = 0;
+	info->feature_flush = REQ_FLUSH | REQ_FUA;
 	info->flush_op = 0;
 
 	err = xenbus_gather(XBT_NIL, info->xbdev->otherend,
@@ -1221,7 +1221,6 @@ static void blkfront_connect(struct blkfront_info *info)
 	 * If there are barriers, then we use flush.
 	 */
 	if (!err && barrier) {
-		info->feature_flush = REQ_FLUSH | REQ_FUA;
 		info->flush_op = BLKIF_OP_WRITE_BARRIER;
 	}
 	/*
@@ -1233,9 +1232,11 @@ static void blkfront_connect(struct blkfront_info *info)
 			    NULL);
 
 	if (!err && flush) {
-		info->feature_flush = REQ_FLUSH;
 		info->flush_op = BLKIF_OP_FLUSH_DISKCACHE;
 	}
+
+	if (!flush && !barrier)
+		info->feature_flush = 0;
 
 	err = xenbus_gather(XBT_NIL, info->xbdev->otherend,
 			    "feature-discard", "%d", &discard,
