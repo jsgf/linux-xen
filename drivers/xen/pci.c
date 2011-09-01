@@ -98,13 +98,10 @@ static int xen_pci_notifier(struct notifier_block *nb,
 	default:
 		return NOTIFY_DONE;
 	}
-	if (r) {
+	if (r)
 		dev_err(dev, "Failed to %s - passthrough or MSI/MSI-X might fail!\n",
 			action == BUS_NOTIFY_ADD_DEVICE ? "add" :
 			(action == BUS_NOTIFY_DEL_DEVICE ? "delete" : "?"));
-		if (action == BUS_NOTIFY_ADD_DEVICE)
-			pci_no_msi();
-	}
 	return NOTIFY_OK;
 }
 
