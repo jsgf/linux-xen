@@ -97,7 +97,7 @@ struct blkfront_info
 	struct blk_shadow shadow[BLK_RING_SIZE];
 	unsigned long shadow_free;
 	unsigned int feature_flush;
-	unsigned int flush_op;
+	int flush_op;
 	unsigned int feature_discard;
 	unsigned int discard_granularity;
 	unsigned int discard_alignment;
@@ -774,7 +774,7 @@ static irqreturn_t blkif_interrupt(int irq, void *dev_id)
 				if (error == -EOPNOTSUPP)
 					error = 0;
 				info->feature_flush = 0;
-				info->flush_op = 0;
+				info->flush_op = -1; /* 0 is BLKIF_OP_READ */
 				xlvbd_flush(info);
 			}
 			/* fall through */
@@ -1207,7 +1207,7 @@ static void blkfront_connect(struct blkfront_info *info)
 	}
 
 	info->feature_flush = 0;
-	info->flush_op = 0;
+	info->flush_op = -1; /* 0 is BLKIF_OP_READ */
 
 	err = xenbus_gather(XBT_NIL, info->xbdev->otherend,
 			    "feature-barrier", "%d", &barrier,
@@ -1234,7 +1234,7 @@ static void blkfront_connect(struct blkfront_info *info)
 	if (!err && flush)
 		info->flush_op = BLKIF_OP_FLUSH_DISKCACHE;
 
-	if (info->flush_op)
+	if (info->flush_op > 0)
 		info->feature_flush = REQ_FLUSH | REQ_FUA;
 
 	err = xenbus_gather(XBT_NIL, info->xbdev->otherend,
