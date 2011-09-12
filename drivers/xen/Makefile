@@ -1,4 +1,4 @@
-obj-y	+= grant-table.o features.o events.o manage.o balloon.o
+obj-y	+= grant-table.o features.o events.o manage.o balloon.o pcpu.o
 obj-y	+= xenbus/
 
 nostackp := $(call cc-option, -fno-stack-protector)
@@ -17,8 +17,9 @@ obj-$(CONFIG_XEN_SYS_HYPERVISOR)	+= sys-hypervisor.o
 obj-$(CONFIG_XEN_PLATFORM_PCI)		+= xen-platform-pci.o
 obj-$(CONFIG_XEN_TMEM)			+= tmem.o
 obj-$(CONFIG_SWIOTLB_XEN)		+= swiotlb-xen.o
-obj-$(CONFIG_XEN_DOM0)			+= pci.o
+obj-$(CONFIG_XEN_DOM0)			+= pci.o acpi.o
 obj-$(CONFIG_XEN_PCIDEV_BACKEND)	+= xen-pciback/
+obj-$(CONFIG_ACPI_PROCESSOR_XEN)	+= acpi_processor.o
 
 xen-evtchn-y				:= evtchn.o
 xen-gntdev-y				:= gntdev.o

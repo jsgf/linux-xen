@@ -408,6 +408,11 @@ nouveau_mem_vram_init(struct drm_device *dev)
 	if (ret)
 		return ret;
 
+	ret = pci_set_consistent_dma_mask(dev->pdev, DMA_BIT_MASK(dma_bits));
+	if (ret) {
+		/* Reset to default value. */
+		pci_set_consistent_dma_mask(dev->pdev, DMA_BIT_MASK(32));
+	}
 	dev_priv->fb_phys = pci_resource_start(dev->pdev, 1);
 
 	ret = nouveau_ttm_global_init(dev_priv);
@@ -417,7 +422,8 @@ nouveau_mem_vram_init(struct drm_device *dev)
 	ret = ttm_bo_device_init(&dev_priv->ttm.bdev,
 				 dev_priv->ttm.bo_global_ref.ref.object,
 				 &nouveau_bo_driver, DRM_FILE_PAGE_OFFSET,
-				 dma_bits <= 32 ? true : false);
+				 dma_bits <= 32 ? true : false,
+				 dev->dev);
 	if (ret) {
 		NV_ERROR(dev, "Error initialising bo driver: %d\n", ret);
 		return ret;

@@ -177,6 +177,7 @@ struct ttm_tt {
 		tt_unpopulated,
 	} state;
 	dma_addr_t *dma_address;
+	struct device *dev;
 };
 
 #define TTM_MEMTYPE_FLAG_FIXED         (1 << 0)	/* Fixed (on-card) PCI memory */
@@ -551,6 +552,7 @@ struct ttm_bo_device {
 	struct list_head device_list;
 	struct ttm_bo_global *glob;
 	struct ttm_bo_driver *driver;
+	struct device *dev;
 	rwlock_t vm_lock;
 	struct ttm_mem_type_manager man[TTM_NUM_MEM_TYPES];
 	spinlock_t fence_lock;
@@ -791,6 +793,8 @@ extern int ttm_bo_device_release(struct ttm_bo_device *bdev);
  * @file_page_offset: Offset into the device address space that is available
  * for buffer data. This ensures compatibility with other users of the
  * address space.
+ * @need_dma32: Allocate pages under 4GB
+ * @dev: 'struct device' of the PCI device.
  *
  * Initializes a struct ttm_bo_device:
  * Returns:
@@ -799,7 +803,8 @@ extern int ttm_bo_device_release(struct ttm_bo_device *bdev);
 extern int ttm_bo_device_init(struct ttm_bo_device *bdev,
 			      struct ttm_bo_global *glob,
 			      struct ttm_bo_driver *driver,
-			      uint64_t file_page_offset, bool need_dma32);
+			      uint64_t file_page_offset, bool need_dma32,
+			      struct device *dev);
 
 /**
  * ttm_bo_unmap_virtual
