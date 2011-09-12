@@ -37,6 +37,59 @@
 # define UNLOCK_LOCK_PREFIX
 #endif
 
+/* How long a lock should spin before we consider blocking */
+#define SPIN_THRESHOLD	(1 << 11)
+
+#ifdef CONFIG_PARAVIRT_SPINLOCKS
+
+/*
+ * Return true if someone is in the slowpath on this lock.  This
+ * should only be used by the current lock-holder.
+ */
+static inline bool __ticket_in_slowpath(arch_spinlock_t *lock)
+{
+	/*
+	 * This deliberately reads both head and tail as a single
+	 * memory operation, and then tests the flag in tail.  This is
+	 * to guarantee that this read is ordered after the "add" to
+	 * head which does the unlock.  If we were to only read "tail"
+	 * to test the flag, then the CPU would be free to reorder the
+	 * read to before the write to "head" (since it is a different
+	 * memory location), which could cause a deadlock with someone
+	 * setting the flag before re-checking the lock availability.
+	 */
+	return ACCESS_ONCE(lock->head_tail) & (TICKET_SLOWPATH_FLAG << TICKET_SHIFT);
+}
+
+static inline void __ticket_enter_slowpath(arch_spinlock_t *lock)
+{
+	if (sizeof(lock->tickets.tail) == sizeof(u8))
+		asm (LOCK_PREFIX "orb %1, %0"
+		     : "+m" (lock->tickets.tail)
+		     : "i" (TICKET_SLOWPATH_FLAG) : "memory");
+	else
+		asm (LOCK_PREFIX "orw %1, %0"
+		     : "+m" (lock->tickets.tail)
+		     : "i" (TICKET_SLOWPATH_FLAG) : "memory");
+}
+
+#else  /* !CONFIG_PARAVIRT_SPINLOCKS */
+static inline bool __ticket_in_slowpath(arch_spinlock_t *lock)
+{
+	return false;
+}
+
+static __always_inline void __ticket_lock_spinning(arch_spinlock_t *lock, __ticket_t ticket)
+{
+}
+
+static inline void __ticket_unlock_kick(arch_spinlock_t *lock, __ticket_t ticket)
+{
+}
+
+#endif	/* CONFIG_PARAVIRT_SPINLOCKS */
+
+
 /*
  * Ticket locks are conceptually two parts, one indicating the current head of
  * the queue, and the other indicating the current tail. The lock is acquired
@@ -49,163 +102,116 @@
  * issues and should be optimal for the uncontended case. Note the tail must be
  * in the high part, because a wide xadd increment of the low part would carry
  * up and contaminate the high part.
- *
- * With fewer than 2^8 possible CPUs, we can use x86's partial registers to
- * save some instructions and make the code more elegant. There really isn't
- * much between them in performance though, especially as locks are out of line.
  */
-#if (NR_CPUS < 256)
-#define TICKET_SHIFT 8
-
-static __always_inline void __ticket_spin_lock(arch_spinlock_t *lock)
-{
-	short inc = 0x0100;
-
-	asm volatile (
-		LOCK_PREFIX "xaddw %w0, %1\n"
-		"1:\t"
-		"cmpb %h0, %b0\n\t"
-		"je 2f\n\t"
-		"rep ; nop\n\t"
-		"movb %1, %b0\n\t"
-		/* don't need lfence here, because loads are in-order */
-		"jmp 1b\n"
-		"2:"
-		: "+Q" (inc), "+m" (lock->slock)
-		:
-		: "memory", "cc");
-}
-
-static __always_inline int __ticket_spin_trylock(arch_spinlock_t *lock)
-{
-	int tmp, new;
-
-	asm volatile("movzwl %2, %0\n\t"
-		     "cmpb %h0,%b0\n\t"
-		     "leal 0x100(%" REG_PTR_MODE "0), %1\n\t"
-		     "jne 1f\n\t"
-		     LOCK_PREFIX "cmpxchgw %w1,%2\n\t"
-		     "1:"
-		     "sete %b1\n\t"
-		     "movzbl %b1,%0\n\t"
-		     : "=&a" (tmp), "=&q" (new), "+m" (lock->slock)
-		     :
-		     : "memory", "cc");
-
-	return tmp;
-}
-
-static __always_inline void __ticket_spin_unlock(arch_spinlock_t *lock)
-{
-	asm volatile(UNLOCK_LOCK_PREFIX "incb %0"
-		     : "+m" (lock->slock)
-		     :
-		     : "memory", "cc");
-}
-#else
-#define TICKET_SHIFT 16
-
-static __always_inline void __ticket_spin_lock(arch_spinlock_t *lock)
-{
-	int inc = 0x00010000;
-	int tmp;
-
-	asm volatile(LOCK_PREFIX "xaddl %0, %1\n"
-		     "movzwl %w0, %2\n\t"
-		     "shrl $16, %0\n\t"
-		     "1:\t"
-		     "cmpl %0, %2\n\t"
-		     "je 2f\n\t"
-		     "rep ; nop\n\t"
-		     "movzwl %1, %2\n\t"
-		     /* don't need lfence here, because loads are in-order */
-		     "jmp 1b\n"
-		     "2:"
-		     : "+r" (inc), "+m" (lock->slock), "=&r" (tmp)
-		     :
-		     : "memory", "cc");
-}
-
-static __always_inline int __ticket_spin_trylock(arch_spinlock_t *lock)
-{
-	int tmp;
-	int new;
-
-	asm volatile("movl %2,%0\n\t"
-		     "movl %0,%1\n\t"
-		     "roll $16, %0\n\t"
-		     "cmpl %0,%1\n\t"
-		     "leal 0x00010000(%" REG_PTR_MODE "0), %1\n\t"
-		     "jne 1f\n\t"
-		     LOCK_PREFIX "cmpxchgl %1,%2\n\t"
-		     "1:"
-		     "sete %b1\n\t"
-		     "movzbl %b1,%0\n\t"
-		     : "=&a" (tmp), "=&q" (new), "+m" (lock->slock)
-		     :
-		     : "memory", "cc");
-
-	return tmp;
-}
-
-static __always_inline void __ticket_spin_unlock(arch_spinlock_t *lock)
-{
-	asm volatile(UNLOCK_LOCK_PREFIX "incw %0"
-		     : "+m" (lock->slock)
-		     :
-		     : "memory", "cc");
-}
-#endif
-
-static inline int __ticket_spin_is_locked(arch_spinlock_t *lock)
-{
-	int tmp = ACCESS_ONCE(lock->slock);
-
-	return !!(((tmp >> TICKET_SHIFT) ^ tmp) & ((1 << TICKET_SHIFT) - 1));
-}
-
-static inline int __ticket_spin_is_contended(arch_spinlock_t *lock)
-{
-	int tmp = ACCESS_ONCE(lock->slock);
-
-	return (((tmp >> TICKET_SHIFT) - tmp) & ((1 << TICKET_SHIFT) - 1)) > 1;
-}
-
-#ifndef CONFIG_PARAVIRT_SPINLOCKS
-
-static inline int arch_spin_is_locked(arch_spinlock_t *lock)
-{
-	return __ticket_spin_is_locked(lock);
-}
-
-static inline int arch_spin_is_contended(arch_spinlock_t *lock)
-{
-	return __ticket_spin_is_contended(lock);
-}
-#define arch_spin_is_contended	arch_spin_is_contended
-
 static __always_inline void arch_spin_lock(arch_spinlock_t *lock)
 {
-	__ticket_spin_lock(lock);
+	register struct __raw_tickets inc = { .tail = TICKET_LOCK_INC };
+
+	inc = xadd(&lock->tickets, inc);
+	if (likely(inc.head == inc.tail))
+		goto out;
+
+	inc.tail &= ~TICKET_SLOWPATH_FLAG;
+	for (;;) {
+		unsigned count = SPIN_THRESHOLD;
+
+		do {
+			if (ACCESS_ONCE(lock->tickets.head) == inc.tail)
+				goto out;
+			cpu_relax();
+		} while (--count);
+		__ticket_lock_spinning(lock, inc.tail);
+	}
+out:	barrier();		/* make sure nothing creeps before the lock is taken */
 }
 
 static __always_inline int arch_spin_trylock(arch_spinlock_t *lock)
 {
-	return __ticket_spin_trylock(lock);
+	arch_spinlock_t old, new;
+
+	old.tickets = ACCESS_ONCE(lock->tickets);
+	if (old.tickets.head != (old.tickets.tail & ~TICKET_SLOWPATH_FLAG))
+		return 0;
+
+	new.head_tail = old.head_tail + (TICKET_LOCK_INC << TICKET_SHIFT);
+
+	/* cmpxchg is a full barrier, so nothing can move before it */
+	return cmpxchg(&lock->head_tail, old.head_tail, new.head_tail) == old.head_tail;
+}
+
+#if (NR_CPUS < 256)
+static __always_inline void __ticket_unlock_release(arch_spinlock_t *lock)
+{
+	asm volatile(UNLOCK_LOCK_PREFIX "addb %1, %0"
+		     : "+m" (lock->head_tail)
+		     : "i" (TICKET_LOCK_INC)
+		     : "memory", "cc");
+}
+#else
+static __always_inline void __ticket_unlock_release(arch_spinlock_t *lock)
+{
+	asm volatile(UNLOCK_LOCK_PREFIX "addw %1, %0"
+		     : "+m" (lock->head_tail)
+		     : "i" (TICKET_LOCK_INC)
+		     : "memory", "cc");
+}
+#endif
+
+static inline void __ticket_unlock_slowpath(arch_spinlock_t *lock,
+					    arch_spinlock_t old)
+{
+	arch_spinlock_t new;
+
+	BUILD_BUG_ON(((__ticket_t)NR_CPUS) != NR_CPUS);
+
+	/* Perform the unlock on the "before" copy */
+	old.tickets.head += TICKET_LOCK_INC;
+
+	/* Clear the slowpath flag */
+	new.head_tail = old.head_tail & ~(TICKET_SLOWPATH_FLAG << TICKET_SHIFT);
+
+	/*
+	 * If the lock is uncontended, clear the flag - use cmpxchg in
+	 * case it changes behind our back though.
+	 */
+	if (new.tickets.head != new.tickets.tail ||
+	    cmpxchg(&lock->head_tail, old.head_tail, new.head_tail) != old.head_tail) {
+		/*
+		 * Lock still has someone queued for it, so wake up an
+		 * appropriate waiter.
+		 */
+		__ticket_unlock_kick(lock, old.tickets.head);
+	}
 }
 
 static __always_inline void arch_spin_unlock(arch_spinlock_t *lock)
 {
-	__ticket_spin_unlock(lock);
+	arch_spinlock_t prev = *lock;
+	__ticket_unlock_release(lock);
+	if (unlikely(__ticket_in_slowpath(lock)))
+		__ticket_unlock_slowpath(lock, prev);
 }
+
+static inline int arch_spin_is_locked(arch_spinlock_t *lock)
+{
+	struct __raw_tickets tmp = ACCESS_ONCE(lock->tickets);
+
+	return !!(tmp.tail ^ tmp.head);
+}
+
+static inline int arch_spin_is_contended(arch_spinlock_t *lock)
+{
+	struct __raw_tickets tmp = ACCESS_ONCE(lock->tickets);
+
+	return ((tmp.tail - tmp.head) & TICKET_MASK) > TICKET_LOCK_INC;
+}
+#define arch_spin_is_contended	arch_spin_is_contended
 
 static __always_inline void arch_spin_lock_flags(arch_spinlock_t *lock,
 						  unsigned long flags)
 {
 	arch_spin_lock(lock);
 }
-
-#endif	/* CONFIG_PARAVIRT_SPINLOCKS */
 
 static inline void arch_spin_unlock_wait(arch_spinlock_t *lock)
 {
