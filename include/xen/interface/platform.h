@@ -42,6 +42,7 @@ struct xenpf_settime {
 	uint32_t nsecs;
 	uint64_t system_time;
 };
+typedef struct xenpf_settime xenpf_settime_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_settime_t);
 
 /*
@@ -61,6 +62,7 @@ struct xenpf_add_memtype {
 	uint32_t handle;
 	uint32_t reg;
 };
+typedef struct xenpf_add_memtype xenpf_add_memtype_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_add_memtype_t);
 
 /*
@@ -76,6 +78,7 @@ struct xenpf_del_memtype {
 	uint32_t handle;
 	uint32_t reg;
 };
+typedef struct xenpf_del_memtype xenpf_del_memtype_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_del_memtype_t);
 
 /* Read current type of an MTRR (x86-specific). */
@@ -88,6 +91,7 @@ struct xenpf_read_memtype {
 	uint64_t nr_mfns;
 	uint32_t type;
 };
+typedef struct xenpf_read_memtype xenpf_read_memtype_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_read_memtype_t);
 
 #define XENPF_microcode_update    35
@@ -96,6 +100,7 @@ struct xenpf_microcode_update {
 	GUEST_HANDLE(void) data;          /* Pointer to microcode data */
 	uint32_t length;                  /* Length of microcode data. */
 };
+typedef struct xenpf_microcode_update xenpf_microcode_update_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_microcode_update_t);
 
 #define XENPF_platform_quirk      39
@@ -106,6 +111,7 @@ struct xenpf_platform_quirk {
 	/* IN variables. */
 	uint32_t quirk_id;
 };
+typedef struct xenpf_platform_quirk xenpf_platform_quirk_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_platform_quirk_t);
 
 #define XENPF_firmware_info       50
@@ -144,6 +150,7 @@ struct xenpf_firmware_info {
 		} vbeddc_info; /* XEN_FW_VBEDDC_INFO */
 	} u;
 };
+typedef struct xenpf_firmware_info xenpf_firmware_info_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_firmware_info_t);
 
 #define XENPF_enter_acpi_sleep    51
@@ -154,6 +161,7 @@ struct xenpf_enter_acpi_sleep {
 	uint32_t sleep_state;       /* Which state to enter (Sn). */
 	uint32_t flags;             /* Must be zero. */
 };
+typedef struct xenpf_enter_acpi_sleep xenpf_enter_acpi_sleep_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_enter_acpi_sleep_t);
 
 #define XENPF_change_freq         52
@@ -163,6 +171,7 @@ struct xenpf_change_freq {
 	uint32_t cpu;   /* Physical cpu. */
 	uint64_t freq;  /* New frequency (Hz). */
 };
+typedef struct xenpf_change_freq xenpf_change_freq_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_change_freq_t);
 
 /*
@@ -187,6 +196,7 @@ struct xenpf_getidletime {
 	/* System time when the idletime snapshots were taken. */
 	uint64_t now;
 };
+typedef struct xenpf_getidletime xenpf_getidletime_t;
 DEFINE_GUEST_HANDLE_STRUCT(xenpf_getidletime_t);
 
 #define XENPF_set_processor_pminfo      54
@@ -350,6 +360,7 @@ struct xen_platform_op {
 		uint8_t                        pad[128];
 	} u;
 };
+typedef struct xen_platform_op xen_platform_op_t;
 DEFINE_GUEST_HANDLE_STRUCT(xen_platform_op_t);
 
 #endif /* __XEN_PUBLIC_PLATFORM_H__ */
