@@ -8,8 +8,8 @@
 
 #ifdef HAVE_JUMP_LABEL
 
-void arch_jump_label_transform(struct jump_entry *entry,
-			       enum jump_label_type type)
+static void __jump_label_transform(struct jump_entry *entry,
+				   enum jump_label_type type)
 {
 	u32 val;
 	u32 *insn = (u32 *) (unsigned long) entry->code;
@@ -28,20 +28,26 @@ void arch_jump_label_transform(struct jump_entry *entry,
 		val = 0x01000000;
 	}
 
-	get_online_cpus();
-	mutex_lock(&text_mutex);
 	*insn = val;
 	flushi(insn);
+}
+
+void arch_jump_label_transform(struct jump_entry *entry,
+			       enum jump_label_type type)
+{
+	get_online_cpus();
+	mutex_lock(&text_mutex);
+
+	__jump_label_transform(entry, type);
+
 	mutex_unlock(&text_mutex);
 	put_online_cpus();
 }
 
-void arch_jump_label_text_poke_early(jump_label_t addr)
+void __init arch_jump_label_transform_early(struct jump_entry *entry,
+					    enum jump_label_type type)
 {
-	u32 *insn_p = (u32 *) (unsigned long) addr;
-
-	*insn_p = 0x01000000;
-	flushi(insn_p);
+	__jump_label_transform(entry, type);
 }
 
 #endif
