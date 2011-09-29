@@ -121,15 +121,6 @@ static void __jump_label_update(struct jump_label_key *key,
 	}
 }
 
-/*
- * Not all archs need this.
- */
-void __weak arch_jump_label_transform_early(struct jump_entry *entry,
-					    enum jump_label_type type)
-{
-	arch_jump_label_transform(entry, type);	
-}
-
 static __init int jump_label_init(void)
 {
 	struct jump_entry *iter_start = __start___jump_table;
