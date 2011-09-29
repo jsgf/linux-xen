@@ -20,8 +20,8 @@
 
 #define J_RANGE_MASK ((1ul << 28) - 1)
 
-void arch_jump_label_transform(struct jump_entry *e,
-			       enum jump_label_type type)
+static void __jump_label_transform(struct jump_entry *e,
+				   enum jump_label_type type)
 {
 	union mips_instruction insn;
 	union mips_instruction *insn_p =
@@ -40,15 +40,28 @@ void arch_jump_label_transform(struct jump_entry *e,
 		insn.word = 0; /* nop */
 	}
 
-	get_online_cpus();
-	mutex_lock(&text_mutex);
 	*insn_p = insn;
 
 	flush_icache_range((unsigned long)insn_p,
 			   (unsigned long)insn_p + sizeof(*insn_p));
+}
+
+void arch_jump_label_transform(struct jump_entry *e,
+			       enum jump_label_type type)
+{
+	get_online_cpus();
+	mutex_lock(&text_mutex);
+
+	__jump_label_tranform(e, type);
 
 	mutex_unlock(&text_mutex);
 	put_online_cpus();
+}
+
+void __init arch_jump_label_transform_early(struct jump_entry *e,
+					    enum jump_label_type type)
+{
+	__jump_label_tranform(e, type);
 }
 
 #endif /* HAVE_JUMP_LABEL */
