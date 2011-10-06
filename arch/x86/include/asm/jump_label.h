@@ -4,12 +4,13 @@
 #ifdef __KERNEL__
 
 #include <linux/types.h>
+#include <linux/stringify.h>
 #include <asm/nops.h>
 #include <asm/asm.h>
 
 #define JUMP_LABEL_NOP_SIZE 5
 
-#define JUMP_LABEL_INITIAL_NOP ".byte 0xe9 \n\t .long 0\n\t"
+#define JUMP_LABEL_INITIAL_NOP ".byte " __stringify(GENERIC_NOP5_ATOMIC) "\n\t"
 
 static __always_inline bool arch_static_branch(struct jump_label_key *key)
 {
