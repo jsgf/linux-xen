@@ -1,11 +1,14 @@
 #ifndef _ASM_X86_SPINLOCK_H
 #define _ASM_X86_SPINLOCK_H
 
+#include <linux/jump_label.h>
 #include <linux/atomic.h>
 #include <asm/page.h>
 #include <asm/processor.h>
 #include <linux/compiler.h>
 #include <asm/paravirt.h>
+#include <asm/bitops.h>
+
 /*
  * Your basic SMP spinlocks, allowing only a single CPU anywhere
  *
@@ -40,45 +43,16 @@
 /* How long a lock should spin before we consider blocking */
 #define SPIN_THRESHOLD	(1 << 11)
 
-#ifdef CONFIG_PARAVIRT_SPINLOCKS
+extern struct jump_label_key paravirt_ticketlocks_enabled;
 
-/*
- * Return true if someone is in the slowpath on this lock.  This
- * should only be used by the current lock-holder.
- */
-static inline bool __ticket_in_slowpath(arch_spinlock_t *lock)
-{
-	/*
-	 * This deliberately reads both head and tail as a single
-	 * memory operation, and then tests the flag in tail.  This is
-	 * to guarantee that this read is ordered after the "add" to
-	 * head which does the unlock.  If we were to only read "tail"
-	 * to test the flag, then the CPU would be free to reorder the
-	 * read to before the write to "head" (since it is a different
-	 * memory location), which could cause a deadlock with someone
-	 * setting the flag before re-checking the lock availability.
-	 */
-	return ACCESS_ONCE(lock->head_tail) & (TICKET_SLOWPATH_FLAG << TICKET_SHIFT);
-}
+#ifdef CONFIG_PARAVIRT_SPINLOCKS
 
 static inline void __ticket_enter_slowpath(arch_spinlock_t *lock)
 {
-	if (sizeof(lock->tickets.tail) == sizeof(u8))
-		asm (LOCK_PREFIX "orb %1, %0"
-		     : "+m" (lock->tickets.tail)
-		     : "i" (TICKET_SLOWPATH_FLAG) : "memory");
-	else
-		asm (LOCK_PREFIX "orw %1, %0"
-		     : "+m" (lock->tickets.tail)
-		     : "i" (TICKET_SLOWPATH_FLAG) : "memory");
+	set_bit(0, (volatile unsigned long *)&lock->tickets.tail);
 }
 
 #else  /* !CONFIG_PARAVIRT_SPINLOCKS */
-static inline bool __ticket_in_slowpath(arch_spinlock_t *lock)
-{
-	return false;
-}
-
 static __always_inline void __ticket_lock_spinning(arch_spinlock_t *lock, __ticket_t ticket)
 {
 }
@@ -139,24 +113,6 @@ static __always_inline int arch_spin_trylock(arch_spinlock_t *lock)
 	return cmpxchg(&lock->head_tail, old.head_tail, new.head_tail) == old.head_tail;
 }
 
-#if (NR_CPUS < 256)
-static __always_inline void __ticket_unlock_release(arch_spinlock_t *lock)
-{
-	asm volatile(UNLOCK_LOCK_PREFIX "addb %1, %0"
-		     : "+m" (lock->head_tail)
-		     : "i" (TICKET_LOCK_INC)
-		     : "memory", "cc");
-}
-#else
-static __always_inline void __ticket_unlock_release(arch_spinlock_t *lock)
-{
-	asm volatile(UNLOCK_LOCK_PREFIX "addw %1, %0"
-		     : "+m" (lock->head_tail)
-		     : "i" (TICKET_LOCK_INC)
-		     : "memory", "cc");
-}
-#endif
-
 static inline void __ticket_unlock_slowpath(arch_spinlock_t *lock,
 					    arch_spinlock_t old)
 {
@@ -186,10 +142,28 @@ static inline void __ticket_unlock_slowpath(arch_spinlock_t *lock,
 
 static __always_inline void arch_spin_unlock(arch_spinlock_t *lock)
 {
-	arch_spinlock_t prev = *lock;
-	__ticket_unlock_release(lock);
-	if (unlikely(__ticket_in_slowpath(lock)))
-		__ticket_unlock_slowpath(lock, prev);
+	if (TICKET_SLOWPATH_FLAG &&
+	    unlikely(static_branch(&paravirt_ticketlocks_enabled))) {
+		arch_spinlock_t prev;
+		__ticketpair_t inc = TICKET_LOCK_INC;
+
+		/*
+		 * Use xadd to update "head" to perform the unlock and
+		 * atomically fetch the state of the flag.  Since
+		 * "head" is the least-significant part of the
+		 * head_tail pair, it may overflow into tail if it is
+		 * about to wrap.  If this happens, compensate by
+		 * adding -1 to tail as well.
+		 */
+		if (lock->tickets.head >= (1 << TICKET_SHIFT) - TICKET_LOCK_INC)
+			inc += -1 << TICKET_SHIFT;
+
+		prev.head_tail = xadd(&lock->head_tail, inc);
+
+		if (unlikely(prev.tickets.tail & TICKET_SLOWPATH_FLAG))
+			__ticket_unlock_slowpath(lock, prev);
+	} else
+		__add(&lock->tickets.head, TICKET_LOCK_INC, UNLOCK_LOCK_PREFIX);
 }
 
 static inline int arch_spin_is_locked(arch_spinlock_t *lock)
