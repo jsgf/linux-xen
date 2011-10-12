@@ -490,11 +490,14 @@ int __stop_machine(int (*fn)(void *), void *data, const struct cpumask *cpus)
 
 	if (!stop_machine_initialized) {
 		/*
-		 * Handle the case where stop_machine() is called early in boot
-		 * before SMP startup.
+		 * Handle the case where stop_machine() is called
+		 * early in boot before stop_machine() has been
+		 * initialized.
 		 */
  		unsigned long flags;
 		int ret;
+
+		WARN_ON_ONCE(smdata.num_threads != 1);
 
 		local_irq_save(flags);
 		hard_irq_disable();
