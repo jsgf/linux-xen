@@ -16,6 +16,5 @@ struct pv_lock_ops pv_lock_ops = {
 };
 EXPORT_SYMBOL(pv_lock_ops);
 
-
 struct jump_label_key paravirt_ticketlocks_enabled = JUMP_LABEL_INIT;
 EXPORT_SYMBOL(paravirt_ticketlocks_enabled);

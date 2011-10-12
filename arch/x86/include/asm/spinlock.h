@@ -145,22 +145,13 @@ static __always_inline void arch_spin_unlock(arch_spinlock_t *lock)
 	if (TICKET_SLOWPATH_FLAG &&
 	    unlikely(static_branch(&paravirt_ticketlocks_enabled))) {
 		arch_spinlock_t prev;
-		__ticketpair_t inc = TICKET_LOCK_INC;
 
-		/*
-		 * Use xadd to update "head" to perform the unlock and
-		 * atomically fetch the state of the flag.  Since
-		 * "head" is the least-significant part of the
-		 * head_tail pair, it may overflow into tail if it is
-		 * about to wrap.  If this happens, compensate by
-		 * adding -1 to tail as well.
-		 */
-		if (lock->tickets.head >= (1 << TICKET_SHIFT) - TICKET_LOCK_INC)
-			inc += -1 << TICKET_SHIFT;
+		prev = *lock;
+		add_smp(&lock->tickets.head, TICKET_LOCK_INC);
 
-		prev.head_tail = xadd(&lock->head_tail, inc);
+		/* add_smp() is a full mb() */
 
-		if (unlikely(prev.tickets.tail & TICKET_SLOWPATH_FLAG))
+		if (unlikely(lock->tickets.tail & TICKET_SLOWPATH_FLAG))
 			__ticket_unlock_slowpath(lock, prev);
 	} else
 		__add(&lock->tickets.head, TICKET_LOCK_INC, UNLOCK_LOCK_PREFIX);
