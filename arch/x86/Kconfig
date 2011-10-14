@@ -558,6 +558,7 @@ config KVM_CLOCK
 config KVM_GUEST
 	bool "KVM Guest support"
 	select PARAVIRT
+	select PARAVIRT_CPU
 	---help---
 	  This option enables various optimizations for running under the KVM
 	  hypervisor.
