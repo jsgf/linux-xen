@@ -207,14 +207,6 @@ static void native_flush_tlb_single(unsigned long addr)
 	__native_flush_tlb_single(addr);
 }
 
-struct jump_label_key paravirt_steal_enabled;
-struct jump_label_key paravirt_steal_rq_enabled;
-
-static u64 native_steal_clock(int cpu)
-{
-	return 0;
-}
-
 /* These are in entry.S */
 extern void native_iret(void);
 extern void native_irq_enable_sysexit(void);
@@ -228,6 +220,14 @@ static struct resource reserve_ioports = {
 	.name = "paravirt-ioport",
 	.flags = IORESOURCE_IO | IORESOURCE_BUSY,
 };
+
+struct jump_label_key paravirt_steal_enabled;
+struct jump_label_key paravirt_steal_rq_enabled;
+
+static u64 native_steal_clock(int cpu)
+{
+	return 0;
+}
 
 /*
  * Reserve the whole legacy IO space to prevent any legacy drivers
